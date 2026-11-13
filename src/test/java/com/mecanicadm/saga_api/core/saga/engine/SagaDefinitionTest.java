@@ -56,7 +56,9 @@ class SagaDefinitionTest {
     void shouldRefuseAssemblyWhenAnEventHasNoRule() {
         SagaFlowStep onlyOne = stepWith(TransitionRule.on(WorkOrderDiagnosedEvent.class, Guards.always(), (s, e) -> List.of()));
 
-        IllegalStateException error = assertThrows(IllegalStateException.class, () -> new SagaDefinition(List.of(onlyOne)));
+        List<SagaFlowStep> steps = List.of(onlyOne);
+
+        IllegalStateException error = assertThrows(IllegalStateException.class, () -> new SagaDefinition(steps));
 
         assertTrue(error.getMessage().contains("BudgetApprovedEvent"));
         assertTrue(error.getMessage().contains("PaymentConfirmedEvent"));

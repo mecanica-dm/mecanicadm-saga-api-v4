@@ -13,7 +13,7 @@ public class GetAllSagasUseCase implements UseCase<GetAllSagasQuery, PageResult<
     public static final int DEFAULT_SIZE = 20;
     public static final int MAX_SIZE = 100;
     public static final String DEFAULT_SORT = "updatedAt";
-    private static final Set<String> SORTABLE = Set.of("createdAt", "updatedAt", "state", "workOrderId");
+    private static final Set<String> SORTABLE = Set.of("createdAt", DEFAULT_SORT, "state", "workOrderId");
 
     private final SagaQueryGateway gateway;
 

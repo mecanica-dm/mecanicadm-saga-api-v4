@@ -18,7 +18,6 @@ import com.mecanicadm.saga_api.core.saga.event.WorkOrderExecutionFinishedEvent;
 import com.mecanicadm.saga_api.core.saga.event.WorkOrderExecutionStartedEvent;
 import com.mecanicadm.saga_api.core.saga.event.WorkOrderVehicleDeliveredEvent;
 import com.mecanicadm.saga_api.core.saga.exception.SagaExceptions;
-import com.mecanicadm.saga_api.core.saga.engine.SagaOrchestrator;
 import com.mecanicadm.saga_api.core.saga.usecase.ProcessSagaEventUseCase;
 import com.mecanicadm.saga_api.infra.features.saga.persistence.SagaDocument;
 import com.mecanicadm.saga_api.infra.messaging.outbox.OutboxDocument;
@@ -221,7 +220,9 @@ class SagaFlowIT extends AbstractIntegrationTest {
     void shouldRollBackSagaAndOutboxTogetherWhenTransactionFails() {
         useCase.execute(created(workOrderId));
 
-        assertThrows(IllegalStateException.class, () -> new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+        TransactionTemplate template = new TransactionTemplate(transactionManager);
+
+        assertThrows(IllegalStateException.class, () -> template.executeWithoutResult(status -> {
             useCase.execute(new WorkOrderDiagnosedEvent(workOrderId));
             throw new IllegalStateException("falha depois de gravar");
         }));

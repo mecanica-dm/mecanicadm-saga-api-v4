@@ -24,6 +24,8 @@ import java.util.UUID;
 @Repository
 public class SagaRepositoryImpl implements SagaGateway, SagaQueryGateway {
 
+    private static final String STATE = "state";
+
     private final SagaMongoRepository repository;
     private final MongoTemplate mongoTemplate;
 
@@ -71,7 +73,7 @@ public class SagaRepositoryImpl implements SagaGateway, SagaQueryGateway {
             parts.add(Criteria.where("_id").is(query.workOrderId()));
         }
         if (query.state() != null) {
-            parts.add(Criteria.where("state").is(query.state()));
+            parts.add(Criteria.where(STATE).is(query.state()));
         }
         if (query.pausedFrom() != null) {
             parts.add(Criteria.where("pausedFrom").is(query.pausedFrom()));
@@ -79,8 +81,8 @@ public class SagaRepositoryImpl implements SagaGateway, SagaQueryGateway {
         if (query.step() != null) {
             List<SagaState> statesOfStep = Arrays.stream(SagaState.values()).filter(state -> state.step() == query.step()).toList();
             parts.add(new Criteria().orOperator(
-                    Criteria.where("state").in(statesOfStep),
-                    Criteria.where("state").is(SagaState.PAUSED).and("pausedFrom").in(statesOfStep)));
+                    Criteria.where(STATE).in(statesOfStep),
+                    Criteria.where(STATE).is(SagaState.PAUSED).and("pausedFrom").in(statesOfStep)));
         }
         addRange(parts, "createdAt", query.createdFrom(), query.createdTo());
         addRange(parts, "updatedAt", query.updatedFrom(), query.updatedTo());

@@ -109,8 +109,12 @@ class RabbitMQConfigTest {
     @Test
     @DisplayName("Deve recusar a conversao quando o event-type for desconhecido ou faltar")
     void shouldRefuseConversionWhenEventTypeIsUnknownOrMissing() {
-        assertThrows(MessageConversionException.class, () -> config.eventMessageConverter().fromMessage(message("DesconhecidoEvent", "{}")));
-        assertThrows(MessageConversionException.class, () -> config.eventMessageConverter().fromMessage(message(null, "{}")));
+        var converter = config.eventMessageConverter();
+        Message unknownType = message("DesconhecidoEvent", "{}");
+        Message missingType = message(null, "{}");
+
+        assertThrows(MessageConversionException.class, () -> converter.fromMessage(unknownType));
+        assertThrows(MessageConversionException.class, () -> converter.fromMessage(missingType));
     }
 
     @Test
