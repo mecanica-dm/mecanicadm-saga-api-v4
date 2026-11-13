@@ -1,7 +1,6 @@
 package com.mecanicadm.saga_api.core.saga.flow;
 
 import com.mecanicadm.saga_api.core.saga.command.CancelBudgetIntegrationCommand;
-import com.mecanicadm.saga_api.core.saga.command.CancelPaymentIntegrationCommand;
 import com.mecanicadm.saga_api.core.saga.command.CancelWorkOrderIntegrationCommand;
 import com.mecanicadm.saga_api.core.saga.command.RefundPaymentIntegrationCommand;
 import com.mecanicadm.saga_api.core.saga.domain.SagaInstance;

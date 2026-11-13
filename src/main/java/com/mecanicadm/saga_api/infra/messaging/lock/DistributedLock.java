@@ -17,6 +17,7 @@ import static org.springframework.data.mongodb.core.query.Query.query;
 public class DistributedLock {
 
     private static final String COLLECTION = "locks";
+    private static final String LOCKED_UNTIL = "lockedUntil";
 
     private final MongoTemplate mongoTemplate;
     private final String owner = UUID.randomUUID().toString();
@@ -29,8 +30,8 @@ public class DistributedLock {
         Instant now = Instant.now();
         try {
             Document acquired = mongoTemplate.findAndModify(
-                    query(where("_id").is(name).and("lockedUntil").lt(now)),
-                    new Update().set("lockedUntil", now.plusMillis(leaseMs)).set("owner", owner),
+                    query(where("_id").is(name).and(LOCKED_UNTIL).lt(now)),
+                    new Update().set(LOCKED_UNTIL, now.plusMillis(leaseMs)).set("owner", owner),
                     FindAndModifyOptions.options().upsert(true).returnNew(true),
                     Document.class, COLLECTION);
             return acquired != null;
@@ -41,6 +42,6 @@ public class DistributedLock {
 
     public void release(String name) {
         mongoTemplate.updateFirst(query(where("_id").is(name).and("owner").is(owner)),
-                new Update().set("lockedUntil", Instant.EPOCH), Document.class, COLLECTION);
+                new Update().set(LOCKED_UNTIL, Instant.EPOCH), Document.class, COLLECTION);
     }
 }

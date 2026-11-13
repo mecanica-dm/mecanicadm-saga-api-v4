@@ -10,7 +10,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
-import java.util.Date;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -39,7 +38,7 @@ public class RabbitOutboxMessageSender {
                 .withBody(outbox.getPayload().getBytes(StandardCharsets.UTF_8))
                 .setContentType(MessageProperties.CONTENT_TYPE_JSON)
                 .setDeliveryMode(MessageDeliveryMode.PERSISTENT)
-                .setTimestamp(Date.from(outbox.getOccurredAt()))
+                .setTimestamp(java.util.Date.from(outbox.getOccurredAt()))
                 .setHeader(MESSAGE_ID_HEADER, outbox.getId().toString())
                 .setHeader(EVENT_TYPE_HEADER, outbox.getType())
                 .build();

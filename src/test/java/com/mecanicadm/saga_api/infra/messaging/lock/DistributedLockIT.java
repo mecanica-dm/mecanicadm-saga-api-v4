@@ -7,9 +7,14 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Update;
+
+import java.time.Instant;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.springframework.data.mongodb.core.query.Criteria.where;
+import static org.springframework.data.mongodb.core.query.Query.query;
 
 @SpringBootTest
 class DistributedLockIT extends AbstractIntegrationTest {
@@ -44,10 +49,10 @@ class DistributedLockIT extends AbstractIntegrationTest {
 
     @Test
     @DisplayName("Deve conceder o lock de novo quando o lease expirar")
-    void shouldGrantLockAgainWhenLeaseExpires() throws InterruptedException {
-        lock.tryAcquire("teste", 50);
-
-        Thread.sleep(120);
+    void shouldGrantLockAgainWhenLeaseExpires() {
+        lock.tryAcquire("teste", 60_000);
+        mongoTemplate.updateFirst(query(where("_id").is("teste")),
+                new Update().set("lockedUntil", Instant.now().minusSeconds(1)), "locks");
 
         assertTrue(lock.tryAcquire("teste", 60_000));
     }
