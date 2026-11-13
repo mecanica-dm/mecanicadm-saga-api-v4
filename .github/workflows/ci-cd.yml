@@ -1,0 +1,153 @@
+name: CI/CD - Saga API Mecânica DM.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  IMAGE_REPO: ${{ vars.DOCKER_IMAGE_REPO }}
+  IMAGE_TAG: prod-${{ github.sha }}
+  CI_IMAGE: mecanicadm-saga-api:ci
+
+jobs:
+  build-and-test:
+    name: Build, Testes e Sonar
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup JDK
+        uses: actions/setup-java@v5
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build and Test
+        run: mvn -B clean verify
+
+      - name: Sonar Analysis
+        if: github.event_name != 'schedule'
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: >
+          mvn -B sonar:sonar -Dsonar.projectKey=mecanica-dm_mecanicadm-saga-api-v4
+          -Dsonar.organization=mecanica-dm
+          -Dsonar.host.url=https://sonarcloud.io/
+
+  security-scan:
+    name: OWASP ZAP Scan
+    needs: build-and-test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create .env file
+        run: |
+          echo "SPRING_PROFILES_ACTIVE=ci" >> .env
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build application image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: false
+          load: true
+          tags: ${{ env.CI_IMAGE }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Start Application
+        run: docker compose --profile broker -f docker-compose.yml -f docker-compose.ci.yml up -d
+
+      - name: Wait for application startup
+        run: |
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:8081/api/actuator/health/liveness && exit 0
+            sleep 5
+          done
+          echo "A aplicação não ficou saudável a tempo"
+          docker compose --profile broker logs api
+          exit 1
+
+      - name: Give permissions for ZAP
+        run: chmod -R 777 .
+
+      - name: ZAP Scan para OpenAPI
+        uses: zaproxy/action-api-scan@v0.10.0
+        with:
+          target: 'http://localhost:8081/api/v3/api-docs'
+          format: openapi
+          rules_file_name: '.zap/rules.tsv'
+          allow_issue_writing: false
+
+      - name: Upload ZAP Scan Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zap-scan-report
+          path: |
+            report_html.html
+            report_md.md
+            report_json.json
+
+      - name: Stop Containers
+        if: always()
+        run: docker compose --profile broker down
+
+  #  publish-and-deploy:
+  #    name: Publicação da imagem e Deploy
+  #    needs: [build-and-test, security-scan]
+  #    if: >-
+  #      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+  #      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
+  #    runs-on: ubuntu-latest
+  #    environment: prod
+  #
+  #    steps:
+  #      - name: Checkout
+  #        uses: actions/checkout@v6
+  #
+  #      - name: Setup Docker Buildx
+  #        uses: docker/setup-buildx-action@v3
+  #
+  #      - name: Login Docker Hub
+  #        uses: docker/login-action@v4
+  #        with:
+  #          username: ${{ secrets.DOCKER_USERNAME }}
+  #          password: ${{ secrets.DOCKER_PASSWORD }}
+  #
+  #      - name: Build e push docker image
+  #        uses: docker/build-push-action@v7
+  #        with:
+  #          context: .
+  #          push: true
+  #          tags: |
+  #            ${{ env.IMAGE_REPO }}:${{ env.IMAGE_TAG }}
+  #            ${{ env.IMAGE_REPO }}:prod-latest
+  #          cache-from: type=gha
+  #          cache-to: type=gha,mode=max
+  #
+  #      - name: Start deploy
+  #        uses: peter-evans/repository-dispatch@v3
+  #        with:
+  #          token: ${{ secrets.DEPLOY_PAT }}
+  #          repository: mecanica-dm/mecanicadm-k8s-v4
+  #          event-type: app-image-published
+  #          client-payload: >-
+  #            {"image_tag": "${{ env.IMAGE_TAG }}", "repository": "${{ env.IMAGE_REPO }}"}
