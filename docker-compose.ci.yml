@@ -1,0 +1,4 @@
+services:
+  api:
+    image: mecanicadm-saga-api:ci
+    pull_policy: never
