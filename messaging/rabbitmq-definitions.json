@@ -1,0 +1,575 @@
+{
+  "exchanges": [
+    {
+      "name": "saga-output",
+      "vhost": "/",
+      "type": "headers",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "workorder-input",
+      "vhost": "/",
+      "type": "headers",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "workorder-output",
+      "vhost": "/",
+      "type": "headers",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "finance-input",
+      "vhost": "/",
+      "type": "headers",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "finance-output",
+      "vhost": "/",
+      "type": "headers",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "mecanicadm.dlx",
+      "vhost": "/",
+      "type": "topic",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "finance-dlx",
+      "vhost": "/",
+      "type": "direct",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    }
+  ],
+  "queues": [
+    {
+      "name": "workorder",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "mecanicadm.dlx",
+        "x-dead-letter-routing-key": "workorder.dlq"
+      }
+    },
+    {
+      "name": "workorder.dlq",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "budget",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "finance-dlx",
+        "x-dead-letter-routing-key": "budget"
+      }
+    },
+    {
+      "name": "budget.dlq",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "saga.workorder-events",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "mecanicadm.dlx",
+        "x-dead-letter-routing-key": "saga.workorder-events.dlq"
+      }
+    },
+    {
+      "name": "saga.workorder-events.dlq",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "saga.finance-events",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "mecanicadm.dlx",
+        "x-dead-letter-routing-key": "saga.finance-events.dlq"
+      }
+    },
+    {
+      "name": "saga.finance-events.dlq",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "payment",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "finance-dlx",
+        "x-dead-letter-routing-key": "payment"
+      }
+    },
+    {
+      "name": "payment.dlq",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    }
+  ],
+  "bindings": [
+    {
+      "source": "saga-output",
+      "vhost": "/",
+      "destination": "workorder-input",
+      "destination_type": "exchange",
+      "routing_key": "",
+      "arguments": {}
+    },
+    {
+      "source": "saga-output",
+      "vhost": "/",
+      "destination": "finance-input",
+      "destination_type": "exchange",
+      "routing_key": "",
+      "arguments": {}
+    },
+    {
+      "source": "workorder-input",
+      "vhost": "/",
+      "destination": "workorder",
+      "destination_type": "queue",
+      "routing_key": "",
+      "arguments": {
+        "x-match": "all",
+        "event-type": "CancelWorkOrderIntegrationCommand"
+      }
+    },
+    {
+      "source": "workorder-input",
+      "vhost": "/",
+      "destination": "workorder",
+      "destination_type": "queue",
+      "routing_key": "",
+      "arguments": {
+        "x-match": "all",
+        "event-type": "AuthorizeWorkOrderIntegrationCommand"
+      }
+    },
+    {
+      "source": "workorder-input",
+      "vhost": "/",
+      "destination": "workorder",
+      "destination_type": "queue",
+      "routing_key": "",
+      "arguments": {
+        "x-match": "all",
+        "event-type": "ChangesRequestedWorkOrderIntegrationCommand"
+      }
+    },
+    {
+      "source": "workorder-input",
+      "vhost": "/",
+      "destination": "workorder",
+      "destination_type": "queue",
+      "routing_key": "",
+      "arguments": {
+        "x-match": "all",
+        "event-type": "ReleaseWorkOrderVehicleIntegrationCommand"
+      }
+    },
+    {
+      "source": "finance-input",
+      "vhost": "/",
+      "destination": "budget",
+      "destination_type": "queue",
+      "routing_key": "",
+      "arguments": {
+        "x-match": "all",
+        "event-type": "GenerateBudgetIntegrationCommand"
+      }
+    },
+    {
+      "source": "finance-input",
+      "vhost": "/",
+      "destination": "budget",
+      "destination_type": "queue",
+      "routing_key": "",
+      "arguments": {
+        "x-match": "all",
+        "event-type": "CancelBudgetIntegrationCommand"
+      }
+    },
+    {
+      "source": "finance-input",
+      "vhost": "/",
+      "destination": "payment",
+      "destination_type": "queue",
+      "routing_key": "",
+      "arguments": {
+        "x-match": "all",
+        "event-type": "GeneratePaymentIntegrationCommand"
+      }
+    },
+    {
+      "source": "finance-input",
+      "vhost": "/",
+      "destination": "payment",
+      "destination_type": "queue",
+      "routing_key": "",
+      "arguments": {
+        "x-match": "all",
+        "event-type": "CancelPaymentIntegrationCommand"
+      }
+    },
+    {
+      "source": "finance-input",
+      "vhost": "/",
+      "destination": "payment",
+      "destination_type": "queue",
+      "routing_key": "",
+      "arguments": {
+        "x-match": "all",
+        "event-type": "RefundPaymentIntegrationCommand"
+      }
+    },
+    {
+      "source": "workorder-output",
+      "vhost": "/",
+      "destination": "saga.workorder-events",
+      "destination_type": "queue",
+      "routing_key": "",
+      "arguments": {
+        "x-match": "all",
+        "event-type": "WorkOrderCreatedEvent"
+      }
+    },
+    {
+      "source": "workorder-output",
+      "vhost": "/",
+      "destination": "saga.workorder-events",
+      "destination_type": "queue",
+      "routing_key": "",
+      "arguments": {
+        "x-match": "all",
+        "event-type": "WorkOrderUpdatedEvent"
+      }
+    },
+    {
+      "source": "workorder-output",
+      "vhost": "/",
+      "destination": "saga.workorder-events",
+      "destination_type": "queue",
+      "routing_key": "",
+      "arguments": {
+        "x-match": "all",
+        "event-type": "WorkOrderDiagnosedEvent"
+      }
+    },
+    {
+      "source": "workorder-output",
+      "vhost": "/",
+      "destination": "saga.workorder-events",
+      "destination_type": "queue",
+      "routing_key": "",
+      "arguments": {
+        "x-match": "all",
+        "event-type": "WorkOrderExecutionStartedEvent"
+      }
+    },
+    {
+      "source": "workorder-output",
+      "vhost": "/",
+      "destination": "saga.workorder-events",
+      "destination_type": "queue",
+      "routing_key": "",
+      "arguments": {
+        "x-match": "all",
+        "event-type": "WorkOrderExecutionFinishedEvent"
+      }
+    },
+    {
+      "source": "workorder-output",
+      "vhost": "/",
+      "destination": "saga.workorder-events",
+      "destination_type": "queue",
+      "routing_key": "",
+      "arguments": {
+        "x-match": "all",
+        "event-type": "WorkOrderCanceledEvent"
+      }
+    },
+    {
+      "source": "workorder-output",
+      "vhost": "/",
+      "destination": "saga.workorder-events",
+      "destination_type": "queue",
+      "routing_key": "",
+      "arguments": {
+        "x-match": "all",
+        "event-type": "WorkOrderVehicleDeliveredEvent"
+      }
+    },
+    {
+      "source": "workorder-output",
+      "vhost": "/",
+      "destination": "saga.workorder-events",
+      "destination_type": "queue",
+      "routing_key": "",
+      "arguments": {
+        "x-match": "all",
+        "event-type": "WorkOrderCommandRejectedEvent"
+      }
+    },
+    {
+      "source": "finance-output",
+      "vhost": "/",
+      "destination": "saga.finance-events",
+      "destination_type": "queue",
+      "routing_key": "",
+      "arguments": {
+        "x-match": "all",
+        "event-type": "BudgetGeneratedEvent"
+      }
+    },
+    {
+      "source": "finance-output",
+      "vhost": "/",
+      "destination": "saga.finance-events",
+      "destination_type": "queue",
+      "routing_key": "",
+      "arguments": {
+        "x-match": "all",
+        "event-type": "BudgetUpdatedEvent"
+      }
+    },
+    {
+      "source": "finance-output",
+      "vhost": "/",
+      "destination": "saga.finance-events",
+      "destination_type": "queue",
+      "routing_key": "",
+      "arguments": {
+        "x-match": "all",
+        "event-type": "BudgetSentForDecisionEvent"
+      }
+    },
+    {
+      "source": "finance-output",
+      "vhost": "/",
+      "destination": "saga.finance-events",
+      "destination_type": "queue",
+      "routing_key": "",
+      "arguments": {
+        "x-match": "all",
+        "event-type": "BudgetSentForDecisionFailedEvent"
+      }
+    },
+    {
+      "source": "finance-output",
+      "vhost": "/",
+      "destination": "saga.finance-events",
+      "destination_type": "queue",
+      "routing_key": "",
+      "arguments": {
+        "x-match": "all",
+        "event-type": "BudgetApprovedEvent"
+      }
+    },
+    {
+      "source": "finance-output",
+      "vhost": "/",
+      "destination": "saga.finance-events",
+      "destination_type": "queue",
+      "routing_key": "",
+      "arguments": {
+        "x-match": "all",
+        "event-type": "BudgetRejectedEvent"
+      }
+    },
+    {
+      "source": "finance-output",
+      "vhost": "/",
+      "destination": "saga.finance-events",
+      "destination_type": "queue",
+      "routing_key": "",
+      "arguments": {
+        "x-match": "all",
+        "event-type": "BudgetChangesRequestedEvent"
+      }
+    },
+    {
+      "source": "finance-output",
+      "vhost": "/",
+      "destination": "saga.finance-events",
+      "destination_type": "queue",
+      "routing_key": "",
+      "arguments": {
+        "x-match": "all",
+        "event-type": "BudgetCanceledEvent"
+      }
+    },
+    {
+      "source": "finance-output",
+      "vhost": "/",
+      "destination": "saga.finance-events",
+      "destination_type": "queue",
+      "routing_key": "",
+      "arguments": {
+        "x-match": "all",
+        "event-type": "BudgetExpiredEvent"
+      }
+    },
+    {
+      "source": "finance-output",
+      "vhost": "/",
+      "destination": "saga.finance-events",
+      "destination_type": "queue",
+      "routing_key": "",
+      "arguments": {
+        "x-match": "all",
+        "event-type": "PaymentLinkGeneratedEvent"
+      }
+    },
+    {
+      "source": "finance-output",
+      "vhost": "/",
+      "destination": "saga.finance-events",
+      "destination_type": "queue",
+      "routing_key": "",
+      "arguments": {
+        "x-match": "all",
+        "event-type": "PaymentLinkGenerationFailedEvent"
+      }
+    },
+    {
+      "source": "finance-output",
+      "vhost": "/",
+      "destination": "saga.finance-events",
+      "destination_type": "queue",
+      "routing_key": "",
+      "arguments": {
+        "x-match": "all",
+        "event-type": "PaymentConfirmedEvent"
+      }
+    },
+    {
+      "source": "finance-output",
+      "vhost": "/",
+      "destination": "saga.finance-events",
+      "destination_type": "queue",
+      "routing_key": "",
+      "arguments": {
+        "x-match": "all",
+        "event-type": "PaymentFailedEvent"
+      }
+    },
+    {
+      "source": "finance-output",
+      "vhost": "/",
+      "destination": "saga.finance-events",
+      "destination_type": "queue",
+      "routing_key": "",
+      "arguments": {
+        "x-match": "all",
+        "event-type": "PaymentCanceledEvent"
+      }
+    },
+    {
+      "source": "finance-output",
+      "vhost": "/",
+      "destination": "saga.finance-events",
+      "destination_type": "queue",
+      "routing_key": "",
+      "arguments": {
+        "x-match": "all",
+        "event-type": "PaymentRefundedEvent"
+      }
+    },
+    {
+      "source": "finance-output",
+      "vhost": "/",
+      "destination": "saga.finance-events",
+      "destination_type": "queue",
+      "routing_key": "",
+      "arguments": {
+        "x-match": "all",
+        "event-type": "FinanceCommandRejectedEvent"
+      }
+    },
+    {
+      "source": "finance-dlx",
+      "vhost": "/",
+      "destination": "budget.dlq",
+      "destination_type": "queue",
+      "routing_key": "budget",
+      "arguments": {}
+    },
+    {
+      "source": "mecanicadm.dlx",
+      "vhost": "/",
+      "destination": "workorder.dlq",
+      "destination_type": "queue",
+      "routing_key": "workorder.dlq",
+      "arguments": {}
+    },
+    {
+      "source": "mecanicadm.dlx",
+      "vhost": "/",
+      "destination": "saga.workorder-events.dlq",
+      "destination_type": "queue",
+      "routing_key": "saga.workorder-events.dlq",
+      "arguments": {}
+    },
+    {
+      "source": "mecanicadm.dlx",
+      "vhost": "/",
+      "destination": "saga.finance-events.dlq",
+      "destination_type": "queue",
+      "routing_key": "saga.finance-events.dlq",
+      "arguments": {}
+    },
+    {
+      "source": "finance-dlx",
+      "vhost": "/",
+      "destination": "payment.dlq",
+      "destination_type": "queue",
+      "routing_key": "payment",
+      "arguments": {}
+    }
+  ]
+}
