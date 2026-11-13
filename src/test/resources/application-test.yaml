@@ -1,0 +1,4 @@
+messaging:
+  outbox:
+    scheduler:
+      enabled: false

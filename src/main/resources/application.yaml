@@ -1,0 +1,70 @@
+spring:
+  application:
+    name: mecanicadm-saga-api
+  data:
+    mongodb:
+      uri: "${MONGODB_URI:mongodb://localhost:27017/saga_db?directConnection=true}"
+      uuid-representation: standard
+      auto-index-creation: true
+  messages:
+    encoding: UTF-8
+    basename: i18n/messages
+  rabbitmq:
+    host: "${RABBITMQ_HOST:localhost}"
+    port: "${RABBITMQ_PORT:5672}"
+    username: "${RABBITMQ_USER:guest}"
+    password: "${RABBITMQ_PASSWORD:guest}"
+    virtual-host: "${RABBITMQ_VHOST:/}"
+    publisher-confirm-type: correlated
+    ssl:
+      enabled: "${RABBITMQ_SSL_ENABLED:false}"
+
+api:
+  security:
+    token:
+      secret: "${JWT_SECRET:development}"
+
+server:
+  servlet:
+    context-path: /api
+  error:
+    include-stacktrace: never
+
+management:
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+
+springdoc:
+  swagger-ui:
+    docExpansion: none
+    tagsSorter: alpha
+
+messaging:
+  queue:
+    workorder-events: saga.workorder-events
+    finance-events: saga.finance-events
+  exchange:
+    saga-output: saga-output
+  consumer:
+    prefetch: "${CONSUMER_PREFETCH:10}"
+  outbox:
+    scheduler:
+      enabled: "${OUTBOX_SCHEDULER_ENABLED:true}"
+    publisher:
+      interval-ms: "${OUTBOX_PUBLISHER_INTERVAL_MS:1000}"
+    batch-size: "${OUTBOX_BATCH_SIZE:50}"
+    confirm-timeout-ms: "${OUTBOX_CONFIRM_TIMEOUT_MS:5000}"
+    retention-days: "${OUTBOX_RETENTION_DAYS:7}"
+    cleanup:
+      cron: "${OUTBOX_CLEANUP_CRON:0 0 3 * * *}"

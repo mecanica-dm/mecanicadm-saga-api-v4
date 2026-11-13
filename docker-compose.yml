@@ -1,0 +1,89 @@
+services:
+  mongo:
+    image: mongo:7.0
+    container_name: mecanicadm-saga-api-v4-mongo
+    command: [ "--replSet", "rs0", "--bind_ip_all" ]
+    ports:
+      - "${SAGA_MONGO_PORT:-27017}:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: >
+        mongosh --quiet --eval "try { rs.status().ok } catch (e) { rs.initiate({_id: 'rs0', members: [{_id: 0, host: 'mongo:27017'}]}).ok }"
+      interval: 5s
+      timeout: 10s
+      retries: 20
+      start_period: 10s
+
+  rabbitmq:
+    profiles: [ "broker" ]
+    image: rabbitmq:3.13-management-alpine
+    container_name: mecanicadm-saga-api-v4-rabbitmq
+    ports:
+      - "${BROKER_PORT:-5672}:5672"
+      - "${BROKER_MANAGEMENT_PORT:-15672}:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=${BROKER_USER:-guest}
+      - RABBITMQ_DEFAULT_PASS=${BROKER_PASSWORD:-guest}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: [ "CMD", "rabbitmq-diagnostics", "-q", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  rabbitmq-init:
+    profiles: [ "broker" ]
+    image: curlimages/curl:8.10.1
+    container_name: mecanicadm-saga-api-v4-rabbitmq-init
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    volumes:
+      - ./messaging/rabbitmq-definitions.json:/definitions.json:ro
+    entrypoint: [ "sh", "-c" ]
+    command:
+      - >
+        curl -sf --retry 10 --retry-delay 3 --retry-connrefused
+        -u "${BROKER_USER:-guest}:${BROKER_PASSWORD:-guest}"
+        -H "content-type: application/json"
+        -X POST http://rabbitmq:15672/api/definitions
+        --data @/definitions.json
+        && echo "Topologia dos tres servicos aplicada"
+    restart: "no"
+
+  api:
+    build: .
+    container_name: mecanicadm-saga-api-v4
+    ports:
+      - "${SAGA_PORT:-8081}:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-default}
+      - MONGODB_URI=mongodb://mongo:27017/saga_db?replicaSet=rs0
+      - JWT_SECRET=${JWT_SECRET:-development}
+      - RABBITMQ_HOST=${BROKER_HOST:-rabbitmq}
+      - RABBITMQ_PORT=${BROKER_PORT:-5672}
+      - RABBITMQ_USER=${BROKER_USER:-guest}
+      - RABBITMQ_PASSWORD=${BROKER_PASSWORD:-guest}
+      - RABBITMQ_VHOST=${BROKER_VHOST:-/}
+      - RABBITMQ_SSL_ENABLED=${BROKER_SSL_ENABLED:-false}
+      - OUTBOX_PUBLISHER_INTERVAL_MS=${OUTBOX_PUBLISHER_INTERVAL_MS:-1000}
+      - OUTBOX_BATCH_SIZE=${OUTBOX_BATCH_SIZE:-50}
+      - OUTBOX_RETENTION_DAYS=${OUTBOX_RETENTION_DAYS:-7}
+    depends_on:
+      mongo:
+        condition: service_healthy
+      rabbitmq-init:
+        condition: service_completed_successfully
+        required: false
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:8080/api/actuator/health/liveness | grep -q UP" ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+volumes:
+  mongo_data:
+  rabbitmq_data:

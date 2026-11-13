@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <appender name="NEWRELIC_JSON" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="com.newrelic.logging.logback13.NewRelicEncoder"/>
+    </appender>
+
+    <appender name="ASYNC" class="com.newrelic.logging.logback13.NewRelicAsyncAppender">
+        <appender-ref ref="NEWRELIC_JSON"/>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="ASYNC"/>
+    </root>
+</configuration>
