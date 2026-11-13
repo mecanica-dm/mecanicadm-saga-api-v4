@@ -35,11 +35,11 @@ Dentro do `core/saga`:
 
 - **`engine`**: o motor genérico (`SagaOrchestrator`, `SagaDefinition`, `TransitionRule`, `Guards`, `CompensationPlanner`). Não
   conhece nenhum evento do negócio.
-- **`flow`**: o fluxo de negócio, uma classe por etapa (`BudgetStep`, `PaymentStep`...), mais `SagaFlow`, que as monta.
+- **`flow`**: o fluxo de negócio. `SagaFlow` monta o fluxo, e `flow/steps` tem uma classe por etapa (`BudgetStep`, `PaymentStep`...).
 - **`domain`, `event`, `command`**: o agregado `SagaInstance` e as mensagens.
 - **`usecase`**: os casos de uso (processar um evento, consultar sagas), que só orquestram portas e o motor.
 
-Incluir um passo novo no fluxo é mexer em `event`, `command` e `flow`, e nunca no `engine`.
+Incluir um passo novo no fluxo é mexer em `event`, `command` e `flow/steps`, e nunca no `engine`.
 
 ### 2.3 Os beans são montados na borda
 

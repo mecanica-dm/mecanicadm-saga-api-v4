@@ -268,7 +268,8 @@ Arquitetura limpa: o `core` não depende de framework, e a `infra` é a borda t�
 src/main/java/com/mecanicadm/saga_api
 ├── core/saga/
 │   ├── engine/    motor genérico: regras, guardas, orquestrador e planejador de compensação
-│   ├── flow/      o negócio: uma classe por etapa (registro, orçamento, decisão, execução, pagamento, entrega, cancelamento, recusa)
+│   ├── flow/      SagaFlow, que monta o fluxo
+│   │   └── steps/ o negócio: uma classe por etapa (registro, orçamento, decisão, execução, pagamento, entrega, cancelamento, recusa)
 │   ├── domain/    SagaInstance (o agregado), SagaState, SagaStep e o retrato da OS
 │   ├── event/     os eventos que a saga recebe (interface sealed)
 │   ├── command/   os integration commands que a saga envia
@@ -278,7 +279,7 @@ src/main/java/com/mecanicadm/saga_api
 └── infra/security/         validação do JWT
 ```
 
-O motor (`engine`) não tem regra de negócio: cada etapa em `flow` declara as suas regras (evento, guarda e ação) e as suas compensações. Incluir um passo novo é criar o evento, declarar a regra na etapa certa e, se houver efeito a desfazer, uma compensação.
+O motor (`engine`) não tem regra de negócio: cada etapa em `flow/steps` declara as suas regras (evento, guarda e ação) e as suas compensações. Incluir um passo novo é criar o evento, declarar a regra na etapa certa e, se houver efeito a desfazer, uma compensação.
 
 ### Por que uma saga orquestrada
 

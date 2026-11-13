@@ -1,4 +1,4 @@
-package com.mecanicadm.saga_api.core.saga.flow;
+package com.mecanicadm.saga_api.core.saga.flow.steps;
 
 import com.mecanicadm.saga_api.core.saga.command.CancelBudgetIntegrationCommand;
 import com.mecanicadm.saga_api.core.saga.command.GenerateBudgetIntegrationCommand;

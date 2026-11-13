@@ -26,7 +26,7 @@ genérico:
 | `SagaDefinition` | Junta as regras de todas as etapas e **falha na montagem** se algum evento da saga ficar sem regra |
 | `SagaOrchestrator` | Recebe a saga e o evento, aplica a primeira regra cuja guarda passa e registra a transição no histórico |
 
-- O motor (`core/saga/engine`) é genérico e **não tem regra de negócio**. O negócio fica em `core/saga/flow`.
+- O motor (`core/saga/engine`) é genérico e **não tem regra de negócio**. O negócio fica em `core/saga/flow` (as etapas, em `flow/steps`).
 - Dentro de um evento, as regras são avaliadas **na ordem em que foram declaradas** e vale a primeira que passa.
 - O evento que não se aplica ao estado atual **não muda nada**: é registrado no histórico com o mesmo estado de origem e
   de destino. Em `COMPLETED` e `CANCELED` todo evento é ignorado.

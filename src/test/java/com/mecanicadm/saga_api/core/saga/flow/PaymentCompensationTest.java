@@ -23,6 +23,7 @@ import com.mecanicadm.saga_api.core.saga.event.WorkOrderExecutionFinishedEvent;
 import com.mecanicadm.saga_api.core.saga.event.WorkOrderExecutionStartedEvent;
 import com.mecanicadm.saga_api.core.saga.event.WorkOrderVehicleDeliveredEvent;
 import com.mecanicadm.saga_api.core.saga.engine.CompensationPlanner;
+import com.mecanicadm.saga_api.core.saga.flow.steps.CommandRejectionStep;
 import com.mecanicadm.saga_api.testutils.LogCapture;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -205,7 +206,7 @@ class PaymentCompensationTest {
     @DisplayName("Deve registrar SAGA_COMPENSATION_FAILED quando o Finance recusar o estorno, mesmo com a saga cancelada")
     void shouldLogWhenRefundIsRejectedAfterCancellation() {
         SagaInstance saga = canceledAfterPayment();
-        try (LogCapture logs = LogCapture.of(com.mecanicadm.saga_api.core.saga.flow.CommandRejectionStep.class)) {
+        try (LogCapture logs = LogCapture.of(CommandRejectionStep.class)) {
             List<SagaCommand> commands = orchestrator.handle(saga,
                     new FinanceCommandRejectedEvent(workOrderId, "RefundPaymentIntegrationCommand", "PaymentNotFound", "Pagamento nao encontrado"));
 
@@ -221,7 +222,7 @@ class PaymentCompensationTest {
     void shouldLogWhenRefundIsRejectedWhileCanceling() {
         SagaInstance saga = awaitingDelivery();
         saga.moveTo(SagaState.CANCELING);
-        try (LogCapture logs = LogCapture.of(com.mecanicadm.saga_api.core.saga.flow.CommandRejectionStep.class)) {
+        try (LogCapture logs = LogCapture.of(CommandRejectionStep.class)) {
             orchestrator.handle(saga,
                     new FinanceCommandRejectedEvent(workOrderId, "RefundPaymentIntegrationCommand", "PaymentNotFound", "Pagamento nao encontrado"));
 
@@ -234,7 +235,7 @@ class PaymentCompensationTest {
     @DisplayName("Nao deve tratar como falha a recusa do cancelamento do orcamento ou do link, que costuma indicar que nao havia o que cancelar")
     void shouldNotLogFailureForBenignCompensationRejections() {
         SagaInstance saga = canceledAfterPayment();
-        try (LogCapture logs = LogCapture.of(com.mecanicadm.saga_api.core.saga.flow.CommandRejectionStep.class)) {
+        try (LogCapture logs = LogCapture.of(CommandRejectionStep.class)) {
             orchestrator.handle(saga, new FinanceCommandRejectedEvent(workOrderId, "CancelBudgetIntegrationCommand", "BudgetNotFound", "x"));
             orchestrator.handle(saga, new FinanceCommandRejectedEvent(workOrderId, "CancelPaymentIntegrationCommand", "PaymentNotFound", "x"));
 

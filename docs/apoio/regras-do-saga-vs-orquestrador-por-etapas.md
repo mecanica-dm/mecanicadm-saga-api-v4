@@ -169,10 +169,11 @@ core/saga/engine/                 o motor, genérico (não conhece nenhum step)
   SagaOrchestrator.java           escolhe a regra e registra o histórico
 core/saga/flow/                   o fluxo de negócio
   SagaFlow.java                   monta os steps, o planner e o orquestrador
-  RegistrationStep.java ...       um step por assunto, cada um com suas regras e sua compensação
+core/saga/flow/steps/             um step por assunto, cada um com suas regras e sua compensação
+  RegistrationStep.java ...
 core/saga/domain/
   SagaInstance.java               dados, histórico e compensações pendentes da saga
   SagaState.java / SagaStep.java
 ```
 
-Para mudar o negócio, você mexe em `flow/`. O `engine/` só muda se mudar a forma de o saga funcionar.
+Para mudar o negócio, você mexe em `flow/steps/`. O `engine/` só muda se mudar a forma de o saga funcionar.

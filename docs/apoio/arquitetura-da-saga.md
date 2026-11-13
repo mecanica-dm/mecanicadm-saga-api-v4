@@ -89,7 +89,7 @@ flowchart TB
 | `event`, `command` | As mensagens que entram (`SagaEvent`, interface selada) e saem (integration commands) |
 | `domain` | `SagaInstance` (o agregado), `SagaState`, `SagaStep`, o histórico e o retrato da OS |
 | `engine` | `SagaOrchestrator`, `SagaDefinition`, `TransitionRule`, `Guards`, `Compensation`, `CompensationPlanner` |
-| `flow` | Um step por assunto: `RegistrationStep`, `BudgetStep`, `CustomerDecisionStep`, `ExecutionStep`, `PaymentStep`, `DeliveryStep`, `CancellationStep`, `CommandRejectionStep`, `UnexpectedEventStep`; e `SagaFlow`, que os monta |
+| `flow`, `flow/steps` | `SagaFlow` e, em `steps`, um step por assunto: `RegistrationStep`, `BudgetStep`, `CustomerDecisionStep`, `ExecutionStep`, `PaymentStep`, `DeliveryStep`, `CancellationStep`, `CommandRejectionStep`, `UnexpectedEventStep`; e `SagaFlow`, que os monta |
 | `usecase` | `ProcessSagaEventUseCase`, `GetAllSagasUseCase`, `GetSagaByIdUseCase` |
 
 O `SagaDefinition` **exige uma regra para cada evento** e falha na criação se faltar alguma: um evento novo sem regra não sobe.

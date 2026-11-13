@@ -243,7 +243,7 @@ O motor **não conhece nenhum step de negócio**. Para mudar o fluxo você mexe 
 | `CompensationPlanner.java` | Junta as compensações de todos os steps (`register(steps)`, feito uma vez na montagem) e, em `compensateFrom(etapa, saga, motivo)`, devolve os commands da etapa mais avançada para a mais antiga, **registra cada um como pendente na saga** e loga `SAGA_COMPENSATED`. | 10 |
 | `Guards.java` | As guardas prontas: `always()`, `inState(...)`, `inStep(...)`, `pausedFrom(...)` e `awaitingCompensation(command)`. | 9 |
 
-### 5.6 `core/saga/flow`: o fluxo de negócio
+### 5.6 `core/saga/flow` e `flow/steps`: o fluxo de negócio
 
 Cada step implementa `SagaFlowStep`: as regras do seu assunto, **na ordem em que valem**, e, quando produz efeito em outro serviço, a **sua própria compensação**. `SagaFlow.standard()` monta a lista de steps, o `CompensationPlanner` e o `SagaOrchestrator`.
 
