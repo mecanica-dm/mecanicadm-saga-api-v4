@@ -555,14 +555,39 @@ GET /api/sagas/<id da OS>                        a saga com o histórico complet
 
 ## ✅ Testes
 
-O projeto possui uma suíte de testes unitários e de integração (Testcontainers com MongoDB e RabbitMQ) para garantir a qualidade e a estabilidade do código.
+O projeto possui testes unitários, **testes BDD (Gherkin/Cucumber)** e testes de integração (Testcontainers com MongoDB e RabbitMQ) para garantir a qualidade e a estabilidade do código.
 
-- `mvn test`: testes unitários.
+- `mvn test`: testes unitários e os cenários BDD.
 - `mvn clean verify`: inclui os testes de integração (Docker é necessário) e gera o relatório do JaCoCo em `target/site/jacoco/index.html`.
 
-**Evidência de cobertura** (JaCoCo, `mvn verify`, 12/11/2026): **92,7% das linhas**, 93,9% das instruções e 80,9% dos branches, acima do mínimo de 80% do desafio. O CI publica o relatório no SonarCloud.
+**Evidência de cobertura** (JaCoCo, `mvn verify`, 13/11/2026): **92,3% das linhas**, 93,7% das instruções e 81,6% dos branches, acima do mínimo de 80% do desafio. São 232 testes (193 unitários e BDD, 39 de integração), todos passando. O CI publica o relatório no SonarCloud.
 
-O fluxo é coberto transição a transição (`SagaOrchestratorTest`, `CommandRejectionTest`, `PaymentCompensationTest`, `SagaFlowTest`), a persistência e a consulta contra um MongoDB real (`SagaFlowIT`, `SagaQueryIT`), a mensageria contra um RabbitMQ real (`SagaMessagingIT`), a segurança (`SecuritySagaApiIT`) e o contrato com o Finance (`GenerateBudgetCommandSerializationTest`).
+### 🥒 Testes BDD (Gherkin)
+
+Os cenários ficam em `src/test/resources/features`, escritos em português (`# language: pt`), e rodam junto dos testes unitários pela classe `CucumberSagaTest`. Eles exercitam o **caso de uso e o fluxo reais da saga** (`ProcessSagaEventUseCase` com `SagaFlow.standard()`), com um repositório em memória e um publicador que registra os commands enviados; os passos estão em `src/test/java/com/mecanicadm/saga_api/bdd`. Depois do `mvn test`, o relatório HTML fica em `target/cucumber-reports/cucumber.html`.
+
+| Feature | Cenários |
+|---|---|
+| `fluxo_completo_da_os.feature` | A OS percorre o fluxo completo, da abertura à entrega do veículo, com o estado e o command de cada passo; eventos repetidos depois da conclusão são ignorados |
+| `compensacao_e_falhas.feature` | Rejeição e expiração do orçamento cancelam a OS; cancelar depois do pagamento estorna e cancela o orçamento, e só conclui com as confirmações; command recusado pela Workorder; alteração da OS com orçamento ativo; falha no link de pagamento pausa e depois retoma; evento repetido é ignorado; evento à frente pausa a saga |
+
+Exemplo (trecho de `compensacao_e_falhas.feature`):
+
+```gherkin
+Cenário: Cancelar a OS depois do pagamento estorna o valor e cancela o orçamento
+  Dado que a saga da OS já chegou ao estado "AWAITING_DELIVERY"
+  Quando a Workorder publica o evento "WorkOrderCanceledEvent"
+  Então a saga está no estado "CANCELING"
+  E a saga enviou os commands, nesta ordem:
+    | RefundPaymentIntegrationCommand |
+    | CancelBudgetIntegrationCommand  |
+  Quando o Finance publica o evento "PaymentRefundedEvent"
+  Então a saga está no estado "CANCELING"
+  Quando o Finance publica o evento "BudgetCanceledEvent"
+  Então a saga está no estado "CANCELED"
+```
+
+O restante do fluxo é coberto transição a transição (`SagaOrchestratorTest`, `CommandRejectionTest`, `PaymentCompensationTest`, `SagaFlowTest`), a persistência e a consulta contra um MongoDB real (`SagaFlowIT`, `SagaQueryIT`), a mensageria contra um RabbitMQ real (`SagaMessagingIT`), a segurança (`SecuritySagaApiIT`) e o contrato com o Finance (`GenerateBudgetCommandSerializationTest`).
 
 ---
 
