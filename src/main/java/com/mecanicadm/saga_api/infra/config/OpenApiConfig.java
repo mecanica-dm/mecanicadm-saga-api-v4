@@ -1,7 +1,10 @@
 package com.mecanicadm.saga_api.infra.config;
 
+import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;
+import io.swagger.v3.oas.models.security.SecurityRequirement;
+import io.swagger.v3.oas.models.security.SecurityScheme;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -10,10 +13,21 @@ public class OpenApiConfig {
 
     @Bean
     public OpenAPI customOpenAPI() {
-        return new OpenAPI().info(new Info()
-                .title("Mecanica DM Saga API")
-                .version("0.0.1")
-                .description("Orquestrador da saga das ordens de servico. Esta API so consulta o andamento das sagas; "
-                        + "o fluxo em si e conduzido por mensageria."));
+        final String securitySchemeName = "bearerAuth";
+        return new OpenAPI()
+                .info(new Info()
+                        .title("Mecânica DM Saga API")
+                        .version("0.0.1")
+                        .description("API de acompanhamento do fluxo das ordens de serviço do sistema de gestão de mecânicas. "
+                                + "A saga coordena a Workorder e o Finance por mensageria, e esta API serve só para consultar o andamento. "
+                                + "Para testar, faça o login na Workorder API (POST /user/login) e cole o token no botão Authorize."))
+                .addSecurityItem(new SecurityRequirement().addList(securitySchemeName))
+                .components(new Components()
+                        .addSecuritySchemes(securitySchemeName,
+                                new SecurityScheme()
+                                        .name(securitySchemeName)
+                                        .type(SecurityScheme.Type.HTTP)
+                                        .scheme("bearer")
+                                        .bearerFormat("JWT")));
     }
 }

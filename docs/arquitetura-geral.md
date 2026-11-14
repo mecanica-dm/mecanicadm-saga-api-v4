@@ -36,6 +36,7 @@ flowchart LR
         wo_out{{"workorder-output"}}
         fn_out{{"finance-output"}}
         sg_out{{"saga-output"}}
+        sg_in{{"saga-input"}}
         wo_in{{"workorder-input"}}
         fn_in{{"finance-input"}}
         q_wo_ev["fila saga.workorder-events"]
@@ -57,8 +58,10 @@ flowchart LR
     fn_api --- fn_db
     sg_core --- sg_db
 
-    wo_api -->|"eventos da OS"| wo_out --> q_wo_ev --> sg_core
-    fn_api -->|"eventos de orçamento e pagamento"| fn_out --> q_fn_ev --> sg_core
+    wo_api -->|"eventos da OS"| wo_out --> sg_in
+    fn_api -->|"eventos de orçamento e pagamento"| fn_out --> sg_in
+    sg_in --> q_wo_ev --> sg_core
+    sg_in --> q_fn_ev --> sg_core
 
     sg_core -->|"commands"| sg_out
     sg_out --> wo_in --> q_wo --> wo_api

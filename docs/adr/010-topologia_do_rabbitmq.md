@@ -16,17 +16,18 @@ devem conhecer filas um do outro, e adicionar um tipo de mensagem não deve exig
 Todas as exchanges de negócio são do tipo `headers`, e o roteamento usa o header `event-type` (o nome da classe da mensagem),
 com `x-match = all`. O código nunca usa routing key.
 
-### 2.2 Um par de exchanges por serviço
+### 2.2 Um par de exchanges por serviço (entrada e saída)
 
 | Exchange | Quem publica | Para onde roteia |
 |---|---|---|
-| `workorder-output` | Workorder (eventos) | `saga.workorder-events` (8 eventos) |
-| `finance-output` | Finance (eventos) | `saga.finance-events` (16 eventos) |
+| `workorder-output` | Workorder (eventos) | `saga-input` (exchange para exchange, sem filtro) |
+| `finance-output` | Finance (eventos) | `saga-input` (exchange para exchange, sem filtro) |
+| `saga-input` | `workorder-output` e `finance-output` | `saga.workorder-events` (8 eventos) e `saga.finance-events` (16 eventos) |
 | `saga-output` | Saga (commands) | `workorder-input` e `finance-input` (exchange para exchange, sem filtro) |
 | `workorder-input` | `saga-output` | fila `workorder` (4 commands) |
 | `finance-input` | `saga-output` | fila `budget` (2 commands) e fila `payment` (3 commands) |
 
-A saga publica **tudo** na `saga-output`, que repassa a cada serviço, e cada `*-input` filtra só o que o serviço consome. Assim a
+Os eventos chegam à saga pela `saga-input`, que é a porta de entrada dela e filtra por `event-type` (simétrica a `workorder-input` e `finance-input`). A saga publica **tudo** na `saga-output`, que repassa a cada serviço, e cada `*-input` filtra só o que o serviço consome. Assim a
 saga não conhece nenhuma fila de destino.
 
 ### 2.3 Uma DLQ por fila

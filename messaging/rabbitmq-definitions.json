@@ -10,6 +10,15 @@
       "arguments": {}
     },
     {
+      "name": "saga-input",
+      "vhost": "/",
+      "type": "headers",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
       "name": "workorder-input",
       "vhost": "/",
       "type": "headers",
@@ -268,7 +277,7 @@
       }
     },
     {
-      "source": "workorder-output",
+      "source": "saga-input",
       "vhost": "/",
       "destination": "saga.workorder-events",
       "destination_type": "queue",
@@ -279,7 +288,7 @@
       }
     },
     {
-      "source": "workorder-output",
+      "source": "saga-input",
       "vhost": "/",
       "destination": "saga.workorder-events",
       "destination_type": "queue",
@@ -290,7 +299,7 @@
       }
     },
     {
-      "source": "workorder-output",
+      "source": "saga-input",
       "vhost": "/",
       "destination": "saga.workorder-events",
       "destination_type": "queue",
@@ -301,7 +310,7 @@
       }
     },
     {
-      "source": "workorder-output",
+      "source": "saga-input",
       "vhost": "/",
       "destination": "saga.workorder-events",
       "destination_type": "queue",
@@ -312,7 +321,7 @@
       }
     },
     {
-      "source": "workorder-output",
+      "source": "saga-input",
       "vhost": "/",
       "destination": "saga.workorder-events",
       "destination_type": "queue",
@@ -323,7 +332,7 @@
       }
     },
     {
-      "source": "workorder-output",
+      "source": "saga-input",
       "vhost": "/",
       "destination": "saga.workorder-events",
       "destination_type": "queue",
@@ -334,7 +343,7 @@
       }
     },
     {
-      "source": "workorder-output",
+      "source": "saga-input",
       "vhost": "/",
       "destination": "saga.workorder-events",
       "destination_type": "queue",
@@ -345,7 +354,7 @@
       }
     },
     {
-      "source": "workorder-output",
+      "source": "saga-input",
       "vhost": "/",
       "destination": "saga.workorder-events",
       "destination_type": "queue",
@@ -356,7 +365,7 @@
       }
     },
     {
-      "source": "finance-output",
+      "source": "saga-input",
       "vhost": "/",
       "destination": "saga.finance-events",
       "destination_type": "queue",
@@ -367,7 +376,7 @@
       }
     },
     {
-      "source": "finance-output",
+      "source": "saga-input",
       "vhost": "/",
       "destination": "saga.finance-events",
       "destination_type": "queue",
@@ -378,7 +387,7 @@
       }
     },
     {
-      "source": "finance-output",
+      "source": "saga-input",
       "vhost": "/",
       "destination": "saga.finance-events",
       "destination_type": "queue",
@@ -389,7 +398,7 @@
       }
     },
     {
-      "source": "finance-output",
+      "source": "saga-input",
       "vhost": "/",
       "destination": "saga.finance-events",
       "destination_type": "queue",
@@ -400,7 +409,7 @@
       }
     },
     {
-      "source": "finance-output",
+      "source": "saga-input",
       "vhost": "/",
       "destination": "saga.finance-events",
       "destination_type": "queue",
@@ -411,7 +420,7 @@
       }
     },
     {
-      "source": "finance-output",
+      "source": "saga-input",
       "vhost": "/",
       "destination": "saga.finance-events",
       "destination_type": "queue",
@@ -422,7 +431,7 @@
       }
     },
     {
-      "source": "finance-output",
+      "source": "saga-input",
       "vhost": "/",
       "destination": "saga.finance-events",
       "destination_type": "queue",
@@ -433,7 +442,7 @@
       }
     },
     {
-      "source": "finance-output",
+      "source": "saga-input",
       "vhost": "/",
       "destination": "saga.finance-events",
       "destination_type": "queue",
@@ -444,7 +453,7 @@
       }
     },
     {
-      "source": "finance-output",
+      "source": "saga-input",
       "vhost": "/",
       "destination": "saga.finance-events",
       "destination_type": "queue",
@@ -455,7 +464,7 @@
       }
     },
     {
-      "source": "finance-output",
+      "source": "saga-input",
       "vhost": "/",
       "destination": "saga.finance-events",
       "destination_type": "queue",
@@ -466,7 +475,7 @@
       }
     },
     {
-      "source": "finance-output",
+      "source": "saga-input",
       "vhost": "/",
       "destination": "saga.finance-events",
       "destination_type": "queue",
@@ -477,7 +486,7 @@
       }
     },
     {
-      "source": "finance-output",
+      "source": "saga-input",
       "vhost": "/",
       "destination": "saga.finance-events",
       "destination_type": "queue",
@@ -488,7 +497,7 @@
       }
     },
     {
-      "source": "finance-output",
+      "source": "saga-input",
       "vhost": "/",
       "destination": "saga.finance-events",
       "destination_type": "queue",
@@ -499,7 +508,7 @@
       }
     },
     {
-      "source": "finance-output",
+      "source": "saga-input",
       "vhost": "/",
       "destination": "saga.finance-events",
       "destination_type": "queue",
@@ -510,7 +519,7 @@
       }
     },
     {
-      "source": "finance-output",
+      "source": "saga-input",
       "vhost": "/",
       "destination": "saga.finance-events",
       "destination_type": "queue",
@@ -521,7 +530,7 @@
       }
     },
     {
-      "source": "finance-output",
+      "source": "saga-input",
       "vhost": "/",
       "destination": "saga.finance-events",
       "destination_type": "queue",
@@ -570,6 +579,26 @@
       "destination_type": "queue",
       "routing_key": "payment",
       "arguments": {}
+    },
+    {
+      "source": "workorder-output",
+      "vhost": "/",
+      "destination": "saga-input",
+      "destination_type": "exchange",
+      "routing_key": "",
+      "arguments": {
+        "x-match": "all"
+      }
+    },
+    {
+      "source": "finance-output",
+      "vhost": "/",
+      "destination": "saga-input",
+      "destination_type": "exchange",
+      "routing_key": "",
+      "arguments": {
+        "x-match": "all"
+      }
     }
   ]
 }

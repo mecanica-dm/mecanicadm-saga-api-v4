@@ -10,20 +10,20 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
-@Schema(description = "Resumo de uma saga. Ha uma saga por OS, identificada pelo id da OS.")
+@Schema(description = "Resumo do andamento de uma ordem de serviço no fluxo distribuído. Há uma saga por OS, com o mesmo id dela")
 public record SagaSummaryResponse(
-        @Schema(description = "Id da saga, que e o id da OS") UUID workOrderId,
-        @Schema(description = "Situacao atual da saga") SagaState state,
-        @Schema(description = "Etapa atual; uma saga pausada fica na etapa em que parou", nullable = true) SagaStep step,
-        @Schema(description = "Estado de onde a saga foi pausada", nullable = true) SagaState pausedFrom,
-        @Schema(description = "Motivo da pausa", nullable = true) String pauseReason,
-        @Schema(description = "Total do orcamento", nullable = true) BigDecimal budgetTotal,
-        @Schema(description = "Link de pagamento", nullable = true) String paymentLink,
-        @Schema(description = "Compensacoes enviadas e ainda sem confirmacao") List<String> pendingCompensations,
-        @Schema(description = "Nome do cliente da OS", nullable = true) String clientName,
-        @Schema(description = "Placa do veiculo da OS", nullable = true) String licensePlate,
-        Instant createdAt,
-        Instant updatedAt) {
+        @Schema(description = "Id da saga, que é o mesmo id da ordem de serviço") UUID workOrderId,
+        @Schema(description = "Situação atual da saga (por exemplo, AWAITING_PAYMENT ou PAUSED)") SagaState state,
+        @Schema(description = "Etapa atual do fluxo; uma saga pausada fica na etapa em que parou", nullable = true) SagaStep step,
+        @Schema(description = "Estado em que a saga estava quando foi pausada", nullable = true) SagaState pausedFrom,
+        @Schema(description = "Motivo da pausa, quando houver", nullable = true) String pauseReason,
+        @Schema(description = "Valor total do orçamento, quando já foi gerado", nullable = true) BigDecimal budgetTotal,
+        @Schema(description = "Link de pagamento gerado pelo Finance, quando houver", nullable = true) String paymentLink,
+        @Schema(description = "Commands de compensação já enviados e ainda sem confirmação") List<String> pendingCompensations,
+        @Schema(description = "Nome do cliente da ordem de serviço", nullable = true) String clientName,
+        @Schema(description = "Placa do veículo da ordem de serviço", nullable = true) String licensePlate,
+        @Schema(description = "Quando a saga foi criada") Instant createdAt,
+        @Schema(description = "Quando a saga foi atualizada pela última vez") Instant updatedAt) {
 
     public static SagaSummaryResponse from(SagaInstance saga) {
         return new SagaSummaryResponse(

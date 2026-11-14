@@ -399,8 +399,9 @@ Todas as exchanges são do tipo `headers` e roteiam pelo header `event-type`. O 
 | `saga-output` | `workorder-input` e `finance-input` | tudo (o filtro é feito depois) |
 | `workorder-input` | fila `workorder` | os 4 commands para a Workorder |
 | `finance-input` | fila `budget` | `GenerateBudgetIntegrationCommand`, `CancelBudgetIntegrationCommand`, `GeneratePaymentIntegrationCommand`, `CancelPaymentIntegrationCommand` e `RefundPaymentIntegrationCommand` |
-| `workorder-output` | fila `saga.workorder-events` | os 7 eventos da Workorder |
-| `finance-output` | fila `saga.finance-events` | os 13 eventos do Finance |
+| `workorder-output` e `finance-output` | `saga-input` | tudo (exchange para exchange) |
+| `saga-input` | fila `saga.workorder-events` | os 7 eventos da Workorder |
+| `saga-input` | fila `saga.finance-events` | os 13 eventos do Finance |
 
 Cada fila tem uma DLQ (`<fila>.dlq`).
 

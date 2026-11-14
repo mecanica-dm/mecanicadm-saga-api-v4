@@ -209,8 +209,9 @@ Todas as exchanges são do tipo `headers` e o roteamento usa o header `event-typ
 | `saga-output` | `workorder-input` e `finance-input` | tudo (exchange para exchange) |
 | `workorder-input` | fila `workorder` | os 4 commands da Workorder |
 | `finance-input` | fila `budget` | `GenerateBudgetIntegrationCommand`, `CancelBudgetIntegrationCommand`, `GeneratePaymentIntegrationCommand`, `CancelPaymentIntegrationCommand` e `RefundPaymentIntegrationCommand` |
-| `workorder-output` | fila `saga.workorder-events` | os 8 eventos da Workorder (incluindo `WorkOrderCommandRejectedEvent`) |
-| `finance-output` | fila `saga.finance-events` | os 16 eventos do Finance (incluindo `PaymentCanceledEvent`, `PaymentRefundedEvent` e `FinanceCommandRejectedEvent`) |
+| `workorder-output` e `finance-output` | `saga-input` | tudo (exchange para exchange) |
+| `saga-input` | fila `saga.workorder-events` | os 8 eventos da Workorder (incluindo `WorkOrderCommandRejectedEvent`) |
+| `saga-input` | fila `saga.finance-events` | os 16 eventos do Finance (incluindo `PaymentCanceledEvent`, `PaymentRefundedEvent` e `FinanceCommandRejectedEvent`) |
 
 Cada fila tem uma DLQ (`<fila>.dlq`) pela exchange `mecanicadm.dlx`.
 

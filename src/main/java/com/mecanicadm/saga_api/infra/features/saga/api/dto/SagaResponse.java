@@ -7,10 +7,10 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.util.List;
 
-@Schema(description = "Saga com o historico completo: um registro por evento recebido")
+@Schema(description = "Saga com o histórico completo: um registro para cada evento recebido")
 public record SagaResponse(
-        SagaSummaryResponse saga,
-        @Schema(description = "Historico em ordem cronologica: evento, estado de origem e de destino, commands enviados")
+        @Schema(description = "Situação atual da saga") SagaSummaryResponse saga,
+        @Schema(description = "Histórico em ordem cronológica: o evento recebido, o estado de origem e de destino e os commands enviados")
         List<TransitionResponse> history) {
 
     public static SagaResponse from(SagaInstance saga) {
@@ -18,8 +18,13 @@ public record SagaResponse(
                 saga.getHistory().stream().map(TransitionResponse::from).toList());
     }
 
-    public record TransitionResponse(String eventType, SagaState fromState, SagaState toState, List<String> commands,
-                                     java.time.Instant occurredAt) {
+    @Schema(description = "Uma transição da saga, causada por um evento recebido")
+    public record TransitionResponse(
+            @Schema(description = "Evento que a saga recebeu (por exemplo, BudgetApprovedEvent)") String eventType,
+            @Schema(description = "Estado antes do evento; vazio na criação da saga", nullable = true) SagaState fromState,
+            @Schema(description = "Estado depois do evento") SagaState toState,
+            @Schema(description = "Commands que a saga enviou em resposta ao evento") List<String> commands,
+            @Schema(description = "Quando o evento foi processado") java.time.Instant occurredAt) {
 
         static TransitionResponse from(SagaTransition transition) {
             return new TransitionResponse(transition.eventType(), transition.fromState(), transition.toState(),
