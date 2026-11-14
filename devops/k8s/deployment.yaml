@@ -1,0 +1,93 @@
+# Deployment da Saga API.
+#
+# A imagem ja embute o agente do New Relic (/app/newrelic.jar) e o ENTRYPOINT do
+# Dockerfile carrega o -javaagent (o app_name "mecanicadm-saga-api" esta no
+# newrelic/newrelic.yml). Por isso nao existe initContainer baixando o agente
+# nem JAVA_OPTS aqui.
+#
+# Nao fixamos runAsUser nem readOnlyRootFilesystem: o agente grava
+# newrelic_agent.log em /app e a imagem roda como "appuser" (nao-root), entao o
+# filesystem precisa ser gravavel.
+#
+# Tambem nao usamos runAsNonRoot: a imagem declara USER appuser (nome, nao UID),
+# e o kubelet recusa o container nesse caso ("image has non-numeric user ...
+# cannot verify user is non-root"). O container ja roda como nao-root por causa
+# do USER do Dockerfile.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mecanicadm-saga
+  namespace: mecanicadm
+  labels:
+    app.kubernetes.io/name: mecanicadm-saga
+    app.kubernetes.io/instance: mecanicadm-saga
+    app.kubernetes.io/part-of: mecanicadm
+    app.kubernetes.io/component: saga-api
+spec:
+  # 1 replica por padrao: o cluster tem 2 nodes t3.small e o HPA escala ate 2.
+  # Multi-replica e suportado pela aplicacao (lock do publicador da outbox e
+  # inbox idempotente), entao nao ha necessidade de limitar.
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: mecanicadm-saga
+      app.kubernetes.io/instance: mecanicadm-saga
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: mecanicadm-saga
+        app.kubernetes.io/instance: mecanicadm-saga
+        app.kubernetes.io/part-of: mecanicadm
+        app.kubernetes.io/component: saga-api
+    spec:
+      serviceAccountName: mecanicadm-saga
+      containers:
+        - name: mecanicadm-saga
+          image: guilhermemuchon/mecanica-dm-saga-api:prod-latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          securityContext:
+            allowPrivilegeEscalation: false
+          envFrom:
+            - configMapRef:
+                name: mecanicadm-saga-config
+            - secretRef:
+                name: mecanicadm-saga-db-secrets
+            - secretRef:
+                name: mecanicadm-saga-secrets
+          resources:
+            # Requests baixos porque o cluster tem apenas 2 nodes t3.small
+            # compartilhados com o workorder e o finance. O pod e pequeno: so
+            # orquestra mensagens e consulta o MongoDB.
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1000m"
+              memory: 1024Mi
+          startupProbe:
+            httpGet:
+              path: /api/actuator/health/liveness
+              port: http
+            failureThreshold: 30
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/actuator/health/liveness
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /api/actuator/health/readiness
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 5

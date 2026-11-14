@@ -1,0 +1,149 @@
+name: Terraform - Saga MongoDB + Secrets
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - "devops/terraform/**"
+      - ".github/workflows/terraform.yml"
+  pull_request:
+    paths:
+      - "devops/terraform/**"
+      - ".github/workflows/terraform.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  # Nunca dois applies do banco ao mesmo tempo.
+  group: terraform-saga-prod
+  cancel-in-progress: false
+
+env:
+  AWS_DEFAULT_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+  TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET || 'mecanicadm-v4-01' }}
+  TF_STATE_KEY: terraform/mecanicadm-saga/terraform.tfstate
+  TF_VAR_region: ${{ vars.AWS_REGION || 'us-east-1' }}
+  # Credenciais da API do MongoDB Atlas (Access Manager -> API Keys).
+  # A org id nao e secreta: vem de uma repo variable.
+  TF_VAR_atlas_org_id: ${{ vars.MONGODB_ATLAS_ORG_ID }}
+  TF_VAR_atlas_public_key: ${{ secrets.MONGODB_ATLAS_PUBLIC_KEY }}
+  TF_VAR_atlas_private_key: ${{ secrets.MONGODB_ATLAS_PRIVATE_KEY }}
+  TF_IN_AUTOMATION: "true"
+  TF_INPUT: "0"
+  ENVIRONMENT: prod
+  SERVICE_NAME: saga
+
+jobs:
+  terraform:
+    name: Terraform
+    runs-on: ubuntu-latest
+    environment: prod
+    timeout-minutes: 30
+
+    defaults:
+      run:
+        working-directory: devops/terraform
+
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v6
+
+      - name: Configura credenciais AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
+
+      - name: Setup do Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.15.4"
+
+      # O bucket já é criado pelo mecanicadm-infra-v4, mas garantimos que ele
+      # exista e continue versionado/criptografado antes do init.
+      - name: Garante o bucket do backend S3
+        working-directory: .
+        run: |
+          set -euo pipefail
+
+          if [ -z "$TF_STATE_BUCKET" ]; then
+            echo "::error::TF_STATE_BUCKET não definido (repo variable ou default do workflow)."
+            exit 1
+          fi
+
+          if ! aws s3api head-bucket --bucket "$TF_STATE_BUCKET" 2>/dev/null; then
+            # PR não cria infraestrutura de produção: só valida.
+            if [ "${{ github.event_name }}" = "pull_request" ]; then
+              echo "::error::Bucket $TF_STATE_BUCKET não existe. Rode o workflow na main para criá-lo."
+              exit 1
+            fi
+
+            if [ "$AWS_DEFAULT_REGION" = "us-east-1" ]; then
+              aws s3api create-bucket --bucket "$TF_STATE_BUCKET" --region "$AWS_DEFAULT_REGION"
+            else
+              aws s3api create-bucket --bucket "$TF_STATE_BUCKET" --region "$AWS_DEFAULT_REGION" \
+                --create-bucket-configuration LocationConstraint="$AWS_DEFAULT_REGION"
+            fi
+          fi
+
+          aws s3api put-bucket-versioning --bucket "$TF_STATE_BUCKET" \
+            --versioning-configuration Status=Enabled
+          aws s3api put-bucket-encryption --bucket "$TF_STATE_BUCKET" \
+            --server-side-encryption '{
+              "Rules": [{
+                "ApplyServerSideEncryptionByDefault": {
+                  "SSEAlgorithm": "aws:kms"
+                },
+                "BucketKeyEnabled": true
+              }]
+            }'
+
+      # O MongoDB fica no Atlas (RFC 002), então este state não depende da VPC
+      # do infra-v4. A única dependência externa é o JWT compartilhado, cujo
+      # segredo pertence ao state do mecanicadm-workorder-api-v4. Falhar aqui
+      # deixa o erro explícito, em vez de estourar no data source.
+      - name: Valida pré-requisitos (Atlas e workorder)
+        working-directory: .
+        run: |
+          set -euo pipefail
+
+          if [ -z "${{ vars.MONGODB_ATLAS_ORG_ID }}" ] || \
+             [ -z "${{ secrets.MONGODB_ATLAS_PUBLIC_KEY }}" ] || \
+             [ -z "${{ secrets.MONGODB_ATLAS_PRIVATE_KEY }}" ]; then
+            echo "::error::Configure a variable MONGODB_ATLAS_ORG_ID e os secrets MONGODB_ATLAS_PUBLIC_KEY e MONGODB_ATLAS_PRIVATE_KEY (API key do MongoDB Atlas)."
+            exit 1
+          fi
+
+          if ! aws ssm get-parameter --name "/mecanicadm/${ENVIRONMENT}/jwt_secret" --with-decryption >/dev/null 2>&1; then
+            echo "::error::Parâmetro SSM /mecanicadm/${ENVIRONMENT}/jwt_secret não encontrado. Aplique o mecanicadm-workorder-api-v4 antes do saga."
+            exit 1
+          fi
+
+      - name: Terraform Init
+        run: |
+          terraform init \
+            -input=false \
+            -backend-config="bucket=${TF_STATE_BUCKET}" \
+            -backend-config="region=${AWS_DEFAULT_REGION}" \
+            -backend-config="key=${TF_STATE_KEY}" \
+            -backend-config="use_lockfile=true"
+
+      - name: Terraform Format
+        run: terraform fmt -check -recursive -diff
+
+      - name: Terraform Validate
+        run: terraform validate -no-color
+
+      - name: Terraform Plan
+        run: terraform plan -input=false -no-color -out=tfplan-prod
+
+      - name: Terraform Apply
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
+        run: terraform apply -auto-approve -input=false tfplan-prod
+
+      - name: Terraform Outputs
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
+        run: terraform output

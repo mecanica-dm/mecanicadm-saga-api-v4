@@ -1,0 +1,39 @@
+# Roteia /api de saga.mecanicadm.com.br para a Saga API via Kong.
+# Fluxo: Cliente -> Kong (Service kong-proxy, NLB) -> Ingress -> Service
+# mecanicadm-saga -> Pod.
+#
+# O host e proprio do saga porque api.mecanicadm.com.br (workorder) e
+# finance.mecanicadm.com.br (finance) ja ocupam o mesmo Kong. O ExternalDNS
+# cria o registro no Route 53 a partir deste Ingress (domain-filter
+# mecanicadm.com.br).
+#
+# A API da saga e so de consulta (GET /api/sagas com JWT; Swagger e Actuator
+# publicos). Nao existe /auth aqui: o login continua no workorder.
+#
+# TLS: como o NLB do Kong e TCP (pass-through), o certificado e servido pelo
+# proprio Kong. Este Ingress nao declara "tls", igual ao do workorder/finance;
+# se for necessario HTTPS valido em saga.mecanicadm.com.br, cadastre o
+# certificado no Kong (mesmo procedimento adotado para os outros hosts).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: mecanicadm-saga
+  namespace: mecanicadm
+  labels:
+    app.kubernetes.io/name: mecanicadm-saga
+    app.kubernetes.io/instance: mecanicadm-saga
+    app.kubernetes.io/part-of: mecanicadm
+    app.kubernetes.io/component: saga-api
+spec:
+  ingressClassName: kong
+  rules:
+    - host: "saga.mecanicadm.com.br"
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: mecanicadm-saga
+                port:
+                  number: 80

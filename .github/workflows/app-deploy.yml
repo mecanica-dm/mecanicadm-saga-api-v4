@@ -1,0 +1,246 @@
+name: Deploy Aplicação - Kubernetes (Saga API)
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - "devops/k8s/**"
+      # Mudanças na topologia do broker também passam pelo deploy, que aplica
+      # o definitions.json (topologia completa dos três serviços) no CloudAMQP.
+      - "messaging/**"
+      - ".github/workflows/app-deploy.yml"
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Tag da imagem a implantar (padrão: prod-latest)"
+        required: false
+        default: ""
+  # Acionado pelo ci-cd.yml depois do push da imagem (gh workflow run).
+  # Depois que o Terraform aplica o MongoDB/secrets, o deploy roda sozinho.
+  workflow_run:
+    workflows: [ "Terraform - Saga MongoDB + Secrets" ]
+    types: [ completed ]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-saga-prod
+  cancel-in-progress: false
+
+env:
+  ENVIRONMENT: prod
+  NAMESPACE: mecanicadm
+  # A URI do MongoDB Atlas (com credenciais) é publicada no SSM pelo Terraform
+  # (devops/terraform).
+  SSM_DB_PREFIX: /mecanicadm/prod/saga
+  # Credenciais do broker CloudAMQP, compartilhadas com o workorder e o
+  # finance no SSM.
+  SSM_RABBITMQ_PREFIX: /mecanicadm/prod/rabbitmq
+  # O repositório da imagem do saga precisa ser próprio do serviço: o ci-cd.yml
+  # também publica a tag móvel "prod-latest" e ela colidiria com a dos outros
+  # serviços se usassem o mesmo repositório.
+  IMAGE_REPO: ${{ vars.DOCKER_IMAGE_REPO || 'guilhermemuchon/mecanica-dm-saga-api' }}
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    environment: prod
+    timeout-minutes: 30
+    # Em workflow_run só faz sentido seguir quando o Terraform aplicou de fato
+    # (push na main com sucesso); PRs apenas validam e não devem deployar.
+    if: >-
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v6
+
+      - name: Configura credenciais AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
+
+      - name: Atualiza o kubeconfig do EKS
+        run: |
+          aws eks update-kubeconfig \
+            --name ${{ vars.EKS_CLUSTER_NAME || 'mecanicadm-prod' }} \
+            --region ${{ vars.AWS_REGION || 'us-east-1' }}
+
+      - name: Garante o namespace da aplicação
+        run: |
+          kubectl create namespace ${{ env.NAMESPACE }} --dry-run=client -o yaml \
+            | kubectl apply -f -
+
+      # A URI do MongoDB é publicada no SSM pelo Terraform (devops/terraform).
+      # A pipeline lê o valor e materializa o Secret, evitando credenciais
+      # versionadas no repositório. A URI já vem completa (mongodb+srv com
+      # usuário, senha e authSource=admin).
+      - name: Cria o Secret do banco a partir do SSM
+        run: |
+          set -euo pipefail
+
+          ssm() {
+            aws ssm get-parameter --name "$1" --with-decryption \
+              --query Parameter.Value --output text
+          }
+
+          MONGODB_URI="$(ssm "$SSM_DB_PREFIX/mongodb_uri")"
+
+          kubectl create secret generic mecanicadm-saga-db-secrets \
+            --namespace ${{ env.NAMESPACE }} \
+            --from-literal=MONGODB_URI="$MONGODB_URI" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      # O broker e o vhost são compartilhados com o workorder e o finance, que
+      # publicam as mesmas credenciais no SSM. Criamos aqui apenas os
+      # parâmetros ausentes: assim o deploy do saga funciona sozinho na
+      # primeira vez e não rotaciona credenciais que os outros já publicaram
+      # (o finance sobrescreve a cada deploy dele).
+      - name: Publica as credenciais do RabbitMQ no SSM (se ausentes)
+        env:
+          RABBITMQ_USER: ${{ secrets.CLOUDAMQP_USER }}
+          RABBITMQ_PASSWORD: ${{ secrets.CLOUDAMQP_PASSWORD }}
+          RABBITMQ_VHOST: ${{ secrets.CLOUDAMQP_VHOST }}
+        run: |
+          set -euo pipefail
+
+          publish_if_missing() {
+            local name="$1" value="$2"
+
+            if aws ssm get-parameter --name "$name" >/dev/null 2>&1; then
+              echo "Parâmetro $name já existe; mantendo o valor atual."
+              return
+            fi
+
+            if [ -z "$value" ]; then
+              echo "::error::Parâmetro $name não existe e a credencial correspondente não foi configurada nos GitHub Secrets CLOUDAMQP_*."
+              exit 1
+            fi
+
+            # Se outra pipeline criar o parâmetro ao mesmo tempo, o put falha
+            # com ParameterAlreadyExists; nesse caso o valor dela vale.
+            if ! output="$(aws ssm put-parameter --name "$name" --type SecureString --value "$value" 2>&1)"; then
+              if aws ssm get-parameter --name "$name" >/dev/null 2>&1; then
+                echo "Parâmetro $name criado por outra execução; mantendo o valor atual."
+                return
+              fi
+              echo "::error::Falha ao publicar o parâmetro $name: $output"
+              exit 1
+            fi
+
+            echo "Parâmetro $name criado."
+          }
+
+          publish_if_missing "$SSM_RABBITMQ_PREFIX/user" "$RABBITMQ_USER"
+          publish_if_missing "$SSM_RABBITMQ_PREFIX/password" "$RABBITMQ_PASSWORD"
+          publish_if_missing "$SSM_RABBITMQ_PREFIX/vhost" "$RABBITMQ_VHOST"
+
+      # O JWT é compartilhado com o workorder e o finance: é criado no state do
+      # mecanicadm-workorder-api-v4 e aqui só é consumido. O New Relic continua
+      # em GitHub Secret. A saga não envia e-mail nem fala com o Mercado Pago,
+      # então não há credenciais de SMTP/MP neste Secret.
+      - name: Cria o Secret da aplicação
+        env:
+          JWT_SECRET_PARAM: /mecanicadm/prod/jwt_secret
+        run: |
+          set -euo pipefail
+
+          ssm() {
+            aws ssm get-parameter --name "$1" --with-decryption \
+              --query Parameter.Value --output text
+          }
+
+          JWT_SECRET="$(ssm "$JWT_SECRET_PARAM")"
+          RABBITMQ_USER="$(ssm "$SSM_RABBITMQ_PREFIX/user")"
+          RABBITMQ_PASSWORD="$(ssm "$SSM_RABBITMQ_PREFIX/password")"
+          RABBITMQ_VHOST="$(ssm "$SSM_RABBITMQ_PREFIX/vhost")"
+
+          kubectl create secret generic mecanicadm-saga-secrets \
+            --namespace ${{ env.NAMESPACE }} \
+            --from-literal=JWT_SECRET="$JWT_SECRET" \
+            --from-literal=NEW_RELIC_LICENSE_KEY="${{ secrets.NEW_RELIC_LICENSE_KEY }}" \
+            --from-literal=RABBITMQ_USER="$RABBITMQ_USER" \
+            --from-literal=RABBITMQ_PASSWORD="$RABBITMQ_PASSWORD" \
+            --from-literal=RABBITMQ_VHOST="$RABBITMQ_VHOST" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Aguarda o Kong ficar pronto
+        run: |
+          kubectl -n kong rollout status deployment/ingress-kong --timeout=10m
+
+      - name: Aplica os manifests da aplicação
+        run: |
+          kubectl apply \
+            -f devops/k8s/serviceaccount.yaml \
+            -f devops/k8s/configmap.yaml \
+            -f devops/k8s/service.yaml \
+            -f devops/k8s/deployment.yaml \
+            -f devops/k8s/hpa.yaml \
+            -f devops/k8s/ingress.yaml
+
+      # A aplicação não declara a topologia em runtime: sem as filas
+      # "saga.workorder-events" e "saga.finance-events" os listeners ficam em
+      # retry. O rabbitmq-definitions.json deste repositório descreve a
+      # topologia COMPLETA dos três serviços (exchanges, filas, bindings e
+      # DLQs), então o deploy do saga garante o broker inteiro; os deploys do
+      # workorder e do finance reaplicam as suas partes.
+      #
+      # Não usamos `POST /api/definitions`: o import exige a tag "administrator"
+      # e o plano compartilhado do CloudAMQP só entrega "management"/
+      # "policymaker" (definitions é documentado como exclusivo de instâncias
+      # dedicadas). O script aplica recurso por recurso, que usa apenas as
+      # permissões normais de vhost, é idempotente e não remove os recursos dos
+      # outros serviços, que compartilham o mesmo vhost.
+      - name: Aplica a topologia do RabbitMQ (CloudAMQP)
+        run: |
+          set -euo pipefail
+
+          ssm() {
+            aws ssm get-parameter --name "$1" --with-decryption \
+              --query Parameter.Value --output text
+          }
+
+          # O host vem do ConfigMap aplicado no passo anterior (fonte única).
+          RABBITMQ_HOST="$(kubectl -n ${{ env.NAMESPACE }} get configmap mecanicadm-saga-config \
+            -o jsonpath='{.data.RABBITMQ_HOST}')"
+          if [ -z "$RABBITMQ_HOST" ]; then
+            echo "::error::RABBITMQ_HOST não encontrado no ConfigMap mecanicadm-saga-config."
+            exit 1
+          fi
+          RABBITMQ_USER="$(ssm "$SSM_RABBITMQ_PREFIX/user")"
+          RABBITMQ_PASSWORD="$(ssm "$SSM_RABBITMQ_PREFIX/password")"
+          RABBITMQ_VHOST="$(ssm "$SSM_RABBITMQ_PREFIX/vhost")"
+          export RABBITMQ_HOST RABBITMQ_USER RABBITMQ_PASSWORD RABBITMQ_VHOST
+
+          bash devops/scripts/rabbitmq-apply-topology.sh messaging/rabbitmq-definitions.json
+
+      - name: Define a tag da imagem a implantar
+        id: image
+        run: |
+          TAG="${{ inputs.image_tag || 'prod-latest' }}"
+          echo "TAG=${TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Atualiza a imagem do Deployment
+        run: |
+          kubectl -n ${{ env.NAMESPACE }} set image deployment/mecanicadm-saga \
+            mecanicadm-saga=${{ env.IMAGE_REPO }}:${{ steps.image.outputs.TAG }}
+
+      # ConfigMap/Secret não reiniciam pods sozinhos e, quando a tag não muda,
+      # o `set image` também não gera rollout. Reinicia explicitamente para as
+      # variáveis MONGODB_URI e RABBITMQ_* chegarem aos containers.
+      - name: Reinicia o Deployment para aplicar ConfigMap e Secrets
+        run: |
+          kubectl -n ${{ env.NAMESPACE }} rollout restart deployment/mecanicadm-saga
+
+      - name: Verifica o status do rollout
+        run: |
+          kubectl -n ${{ env.NAMESPACE }} rollout status deployment/mecanicadm-saga --timeout=5m
+
+      # Nota: a saga não tem Job de seed. As coleções e os índices do MongoDB
+      # são criados pela própria aplicação na inicialização e as sagas nascem
+      # dos eventos publicados pela Workorder e pela Finance.

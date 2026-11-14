@@ -7,6 +7,12 @@ on:
     types: [opened, synchronize, reopened]
   workflow_dispatch:
 
+permissions:
+  contents: read
+  # Necessario para disparar o app-deploy.yml via "gh workflow run" com o
+  # GITHUB_TOKEN (workflow_dispatch exige actions: write).
+  actions: write
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -110,44 +116,48 @@ jobs:
         if: always()
         run: docker compose --profile broker down
 
-  #  publish-and-deploy:
-  #    name: Publicação da imagem e Deploy
-  #    needs: [build-and-test, security-scan]
-  #    if: >-
-  #      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-  #      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
-  #    runs-on: ubuntu-latest
-  #    environment: prod
-  #
-  #    steps:
-  #      - name: Checkout
-  #        uses: actions/checkout@v6
-  #
-  #      - name: Setup Docker Buildx
-  #        uses: docker/setup-buildx-action@v3
-  #
-  #      - name: Login Docker Hub
-  #        uses: docker/login-action@v4
-  #        with:
-  #          username: ${{ secrets.DOCKER_USERNAME }}
-  #          password: ${{ secrets.DOCKER_PASSWORD }}
-  #
-  #      - name: Build e push docker image
-  #        uses: docker/build-push-action@v7
-  #        with:
-  #          context: .
-  #          push: true
-  #          tags: |
-  #            ${{ env.IMAGE_REPO }}:${{ env.IMAGE_TAG }}
-  #            ${{ env.IMAGE_REPO }}:prod-latest
-  #          cache-from: type=gha
-  #          cache-to: type=gha,mode=max
-  #
-  #      - name: Start deploy
-  #        uses: peter-evans/repository-dispatch@v3
-  #        with:
-  #          token: ${{ secrets.DEPLOY_PAT }}
-  #          repository: mecanica-dm/mecanicadm-k8s-v4
-  #          event-type: app-image-published
-  #          client-payload: >-
-  #            {"image_tag": "${{ env.IMAGE_TAG }}", "repository": "${{ env.IMAGE_REPO }}"}
+  publish-and-deploy:
+    name: Publicação da imagem e Deploy
+    needs: [build-and-test, security-scan]
+    if: >-
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    environment: prod
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login Docker Hub
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build e push docker image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.IMAGE_REPO }}:${{ env.IMAGE_TAG }}
+            ${{ env.IMAGE_REPO }}:prod-latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # O deploy roda neste repositorio (devops/k8s + app-deploy.yml). O antigo
+      # repository_dispatch para o mecanicadm-k8s-v4 foi removido: aquele repo
+      # nao e mais usado. "gh workflow run" precisa do GITHUB_TOKEN (nao de PAT)
+      # e da permissao actions: write declarada no topo do workflow.
+      - name: Dispara o deploy no Kubernetes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh workflow run app-deploy.yml \
+            --repo "${{ github.repository }}" \
+            --ref main \
+            -f image_tag="$IMAGE_TAG"

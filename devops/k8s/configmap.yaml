@@ -1,0 +1,34 @@
+# Configuracao nao sensivel da Saga API.
+#
+# Credenciais (MONGODB_URI, JWT, RabbitMQ e New Relic) NAO ficam aqui: sao
+# criadas pela pipeline (app-deploy.yml) nos Secrets "mecanicadm-saga-db-secrets"
+# e "mecanicadm-saga-secrets".
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mecanicadm-saga-config
+  namespace: mecanicadm
+  labels:
+    app.kubernetes.io/name: mecanicadm-saga
+    app.kubernetes.io/instance: mecanicadm-saga
+    app.kubernetes.io/part-of: mecanicadm
+    app.kubernetes.io/component: saga-api
+data:
+  # O grupo de readiness do Spring Boot inclui, por padrao, apenas o estado do
+  # pod. Declaramos "mongo" explicitamente (o indicador de saude do MongoDB se
+  # chama "mongo"; o "db" e do JDBC do workorder/finance) para o pod nao ficar
+  # pronto com o banco fora do ar, e deixamos o RabbitMQ de fora: um blip do
+  # broker nao deve tirar o pod do Service (o listener reconecta sozinho).
+  MANAGEMENT_ENDPOINT_HEALTH_GROUP_READINESS_INCLUDE: "readinessState,mongo"
+
+  # Broker gerenciado no CloudAMQP (Little Lemur), compartilhado com o
+  # workorder e o finance. Host e porta nao sao segredo; as credenciais
+  # (RABBITMQ_USER, RABBITMQ_PASSWORD e RABBITMQ_VHOST) chegam pelo Secret
+  # "mecanicadm-saga-secrets", criado pela pipeline a partir do SSM em
+  # /mecanicadm/prod/rabbitmq.
+  RABBITMQ_HOST: "moose.rmq.cloudamqp.com"
+  RABBITMQ_PORT: "5671"
+  RABBITMQ_SSL_ENABLED: "true"
+
+  # Outbox e consumer usam os defaults do application.yaml (intervalo de 1s,
+  # lote de 50, retencao de 7 dias e prefetch 10). Sobrescreva aqui se precisar.
