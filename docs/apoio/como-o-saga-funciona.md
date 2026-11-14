@@ -431,7 +431,7 @@ Cada fila tem uma DLQ (`<fila>.dlq`).
 - **Sem retry em conflito de lock otimista.** Se duas instâncias alterarem a mesma saga ao mesmo tempo, a segunda falha e vai para a DLQ.
 - **Sem endpoint para retomar** saga pausada. O estado se consulta por `GET /api/sagas` (filtros por OS, situação, etapa, pausa e datas) e `GET /api/sagas/{workOrderId}` (com o histórico), ou direto no MongoDB.
 - **A confirmação das compensações depende de o outro serviço publicá-la.** O Finance trata `CancelPayment` e `RefundPayment` e publica `PaymentCanceledEvent` e `PaymentRefundedEvent`; se um deles deixar de publicar, a saga fica em `CANCELING` esperando.
-- **O resultado do pagamento chega ao Finance pelo webhook do Mercado Pago e por uma rotina de consulta** (reconciliação). Sem o webhook configurado, a latência é a do intervalo da rotina (1 minuto).
+- **O resultado do pagamento chega ao Finance por uma rotina de consulta ao Mercado Pago** (a cada minuto), então a latência de um pagamento pendente é de até um intervalo da rotina.
 - **Pausa por recusa ou evento inesperado só se resolve na mão:** cancelando a OS ou ajustando o documento no MongoDB (ver o README).
 - **Sem timeout de etapa.** Se um serviço nunca responder, a saga fica esperando.
 - **Mensagem da outbox com falha na publicação** vira `FAILED` e não é reenviada sozinha.

@@ -81,7 +81,6 @@ flowchart LR
     fn_in --> q_payment --> fn_api
 
     fn_api -->|"cria, cancela e estorna pedidos"| mp
-    mp -.->|"webhook do pagamento"| fn_api
     fn_api -->|"orçamento com PDF e links"| email
 ```
 
