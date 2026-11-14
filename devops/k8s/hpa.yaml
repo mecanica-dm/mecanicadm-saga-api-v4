@@ -1,0 +1,36 @@
+# Autoscaling da Saga API.
+#
+# O cluster roda em 2 nodes t3.small, compartilhados com o workorder, o finance,
+# o Kong e os addons. Por isso o maximo e 2 replicas: o Deployment sobe com 1 e
+# escala apenas sob carga. Multi-replica e seguro (lock da outbox e inbox
+# idempotente).
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: mecanicadm-saga
+  namespace: mecanicadm
+  labels:
+    app.kubernetes.io/name: mecanicadm-saga
+    app.kubernetes.io/instance: mecanicadm-saga
+    app.kubernetes.io/part-of: mecanicadm
+    app.kubernetes.io/component: saga-api
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: mecanicadm-saga
+  minReplicas: 1
+  maxReplicas: 2
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80

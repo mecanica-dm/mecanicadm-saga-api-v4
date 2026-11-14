@@ -36,3 +36,9 @@ build/
 .env.local
 aws-init-scripts/
 stripe_output.log
+
+### Terraform (devops/terraform) ###
+.terraform/
+terraform.tfvars
+backend.hcl
+tfplan*
