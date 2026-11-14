@@ -463,7 +463,16 @@ A API roda por conta própria, com o seu MongoDB, e escuta e publica as mensagen
 
 <br>
 
-Para ver a OS percorrer o fluxo inteiro (diagnóstico, orçamento, aprovação, execução, pagamento e entrega), suba os três serviços, **nesta ordem**. Com as três pastas lado a lado, `./subir-tudo.sh`, na pasta que as contém, faz tudo.
+Para ver a OS percorrer o fluxo inteiro (diagnóstico, orçamento, aprovação, execução, pagamento e entrega), suba os três serviços, **nesta ordem**. Com as três pastas lado a lado, os scripts do repositório da saga fazem tudo (sobem na ordem certa e esperam cada API ficar saudável):
+
+| | Subir | Derrubar (`--limpar` / `-Limpar` apaga também os volumes) |
+|---|---|---|
+| **Linux / macOS** | `./mecanicadm-saga-api-v4/scripts/subir-tudo.sh` | `./mecanicadm-saga-api-v4/scripts/derrubar-tudo.sh [--limpar]` |
+| **Windows (PowerShell)** | `.\mecanicadm-saga-api-v4\scripts\subir-tudo.ps1` | `.\mecanicadm-saga-api-v4\scripts\derrubar-tudo.ps1 [-Limpar]` |
+
+No Windows, se a execução de scripts estiver bloqueada: `powershell -ExecutionPolicy Bypass -File .\mecanicadm-saga-api-v4\scripts\subir-tudo.ps1`.
+
+Ou, manualmente, um de cada vez:
 
 | # | Pasta | Comando | O que sobe |
 |---|---|---|---|
@@ -478,6 +487,19 @@ Para usar um **broker externo** (como o CloudAMQP), não use o perfil `broker` d
 </details>
 
 ---
+
+## 🧪 Teste do fluxo completo no Postman
+
+A coleção [`postman/mecanicadm-fluxo.postman_collection.json`](postman/mecanicadm-fluxo.postman_collection.json) percorre o fluxo inteiro da OS pelas três APIs (login, abertura da OS, diagnóstico, orçamento, aprovação pelo link do e-mail, execução, pagamento, entrega, histórico e cenários alternativos). É a mesma coleção nos três repositórios.
+
+1. **Suba os três serviços** (veja "Subir todos (fluxo completo)" em *Como Começar*). O Mailpit, que recebe o e-mail do orçamento, fica em `http://localhost:8025`.
+2. No Postman, **Import** e escolha o arquivo. As variáveis já vêm preenchidas para o ambiente local (`workorderUrl` 8080, `sagaUrl` 8081, `financeUrl` 8082, usuário do seed).
+3. Execute as pastas **na ordem** (`0` a `7`), ou use o *Runner* na coleção inteira. Os passos "Saga: esperado ..." tentam de novo sozinhos enquanto a saga processa a mensagem.
+4. A pasta `8` traz cenários alternativos (rejeição, pedido de alterações, cancelamento); use uma OS nova em cada um.
+
+**Pagamento:** para o passo de pagamento, o Finance precisa das credenciais de **teste** do Mercado Pago (`MERCADO_PAGO_ACCESS_TOKEN` e `MERCADO_PAGO_PUBLIC_KEY` no `.env`; veja o README do Finance). Sem elas, a saga fica em `PAUSED` com `PaymentLinkGenerationFailed`, e isso é o esperado.
+
+**Repetir o teste:** cada rodada consome uma unidade de material do seed (25 unidades de óleo). Para voltar ao estado inicial, derrube com `docker compose down -v` e suba de novo.
 
 ## 📄 Documentação da API
 

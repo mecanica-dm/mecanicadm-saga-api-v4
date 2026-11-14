@@ -1,0 +1,1975 @@
+{
+  "info": {
+    "name": "Mecânica DM - Fluxo completo da OS",
+    "description": "Roteiro dos endpoints do fluxo (Workorder, Finance e Saga). Rode as pastas 0 a 7 em ordem (4A e 4B contam como a 4), com os três serviços no ar (veja o README). A saga é assíncrona: se um 'Saga: esperado ...' falhar, espere 1 a 2 s e reenvie. A pasta 8 traz cenários alternativos (use uma OS nova).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "workorderUrl",
+      "value": "http://localhost:8080/api"
+    },
+    {
+      "key": "sagaUrl",
+      "value": "http://localhost:8081/api"
+    },
+    {
+      "key": "financeUrl",
+      "value": "http://localhost:8082/api"
+    },
+    {
+      "key": "mailpitUrl",
+      "value": "http://localhost:8025"
+    },
+    {
+      "key": "email",
+      "value": "admin@mecanicadm.com"
+    },
+    {
+      "key": "password",
+      "value": "Senha123"
+    },
+    {
+      "key": "clientId",
+      "value": "150b06cf-68b6-455a-94dc-215c9a0f443b"
+    },
+    {
+      "key": "vehicleId",
+      "value": "ABC-1234"
+    },
+    {
+      "key": "laborId",
+      "value": "1b913e8a-81cf-41c3-bbbd-6cd8342460e7"
+    },
+    {
+      "key": "materialId",
+      "value": "b3c1b691-8d2b-42ea-a4b5-ea93db622616"
+    },
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "workOrderId",
+      "value": ""
+    },
+    {
+      "key": "laborItemId",
+      "value": ""
+    },
+    {
+      "key": "mailId",
+      "value": ""
+    },
+    {
+      "key": "budgetToken",
+      "value": ""
+    },
+    {
+      "key": "_tries",
+      "value": "0"
+    }
+  ],
+  "item": [
+    {
+      "name": "0. Autenticação",
+      "item": [
+        {
+          "name": "Login (Workorder)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{workorderUrl}}/user/login",
+              "host": [
+                "{{workorderUrl}}"
+              ],
+              "path": [
+                "user",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}"
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Usuário do seed. O token vale nos três serviços (mesmo JWT_SECRET) e é salvo em {{token}}."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code + ' (esperado: 200)', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  "const t = pm.response.json().access_token;",
+                  "pm.test('recebeu o token', function () { pm.expect(t).to.be.a('string'); });",
+                  "pm.collectionVariables.set('token', t);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "1. Cadastros do seed (consulta)",
+      "item": [
+        {
+          "name": "Listar clientes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{workorderUrl}}/clients",
+              "host": [
+                "{{workorderUrl}}"
+              ],
+              "path": [
+                "clients"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code + ' (esperado: 200)', function () { pm.expect([200]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar veículos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{workorderUrl}}/vehicle",
+              "host": [
+                "{{workorderUrl}}"
+              ],
+              "path": [
+                "vehicle"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code + ' (esperado: 200)', function () { pm.expect([200]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar mão de obra",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{workorderUrl}}/labor",
+              "host": [
+                "{{workorderUrl}}"
+              ],
+              "path": [
+                "labor"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code + ' (esperado: 200)', function () { pm.expect([200]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar materiais",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{workorderUrl}}/materials",
+              "host": [
+                "{{workorderUrl}}"
+              ],
+              "path": [
+                "materials"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code + ' (esperado: 200)', function () { pm.expect([200]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": "Só para conferir os ids usados nas variáveis (clientId, vehicleId, laborId, materialId). Os valores padrão são os do seed."
+    },
+    {
+      "name": "2. Abertura da OS",
+      "item": [
+        {
+          "name": "Abrir OS",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{workorderUrl}}/work-orders",
+              "host": [
+                "{{workorderUrl}}"
+              ],
+              "path": [
+                "work-orders"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clientId\": \"{{clientId}}\",\n  \"vehicleId\": \"{{vehicleId}}\",\n  \"description\": \"Revisão e troca de óleo (Postman)\",\n  \"laborIds\": [\n    \"{{laborId}}\"\n  ],\n  \"materialItems\": [\n    {\n      \"materialId\": \"{{materialId}}\",\n      \"quantity\": 1\n    }\n  ]\n}"
+            },
+            "description": "Cria a OS e guarda o id em {{workOrderId}}. A saga nasce em WORK_ORDER_OPEN."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code + ' (esperado: 200, 201)', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                  "let id = null;",
+                  "try { const j = pm.response.json(); id = (typeof j === 'string') ? j : (j.id || j.workOrderId); } catch (e) { id = pm.response.text().replace(/\"/g, ''); }",
+                  "pm.test('recebeu o id da OS', function () { pm.expect(id).to.be.a('string').and.not.empty; });",
+                  "pm.collectionVariables.set('workOrderId', id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar OS",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{workorderUrl}}/work-orders/{{workOrderId}}",
+              "host": [
+                "{{workorderUrl}}"
+              ],
+              "path": [
+                "work-orders",
+                "{{workOrderId}}"
+              ]
+            },
+            "description": "Também guarda o id do item de mão de obra em {{laborItemId}} (usado na execução)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code + ' (esperado: 200)', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  "const j = pm.response.json();",
+                  "if (j.laborItems && j.laborItems.length) { pm.collectionVariables.set('laborItemId', j.laborItems[0].id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar status da OS",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{workorderUrl}}/work-orders/{{workOrderId}}/status",
+              "host": [
+                "{{workorderUrl}}"
+              ],
+              "path": [
+                "work-orders",
+                "{{workOrderId}}",
+                "status"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code + ' (esperado: 200)', function () { pm.expect([200]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Saga: esperado WORK_ORDER_OPEN",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{sagaUrl}}/sagas/{{workOrderId}}",
+              "host": [
+                "{{sagaUrl}}"
+              ],
+              "path": [
+                "sagas",
+                "{{workOrderId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// a saga e assincrona: espera um instante antes de consultar",
+                  "setTimeout(function () {}, 1500);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code + ' (esperado: 200)', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  "const body = pm.response.json();",
+                  "const s = body.saga || (body.content && body.content[0]) || {};",
+                  "const tries = Number(pm.collectionVariables.get('_tries') || 0);",
+                  "if (s.state !== 'WORK_ORDER_OPEN' && tries < 6) {",
+                  "  pm.collectionVariables.set('_tries', tries + 1);",
+                  "  console.log('saga em ' + s.state + ', esperando WORK_ORDER_OPEN (tentativa ' + (tries + 1) + ')');",
+                  "  postman.setNextRequest(pm.info.requestName);",
+                  "} else {",
+                  "  pm.collectionVariables.set('_tries', 0);",
+                  "  pm.test('saga em WORK_ORDER_OPEN (atual: ' + s.state + (s.pauseReason ? ', pausa: ' + s.pauseReason : '') + ')', function () { pm.expect(s.state).to.eql('WORK_ORDER_OPEN'); });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Diagnóstico e orçamento",
+      "item": [
+        {
+          "name": "Diagnosticar OS",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{workorderUrl}}/work-orders/{{workOrderId}}/step/diagnose",
+              "host": [
+                "{{workorderUrl}}"
+              ],
+              "path": [
+                "work-orders",
+                "{{workOrderId}}",
+                "step",
+                "diagnose"
+              ]
+            },
+            "description": "A saga recebe o WorkOrderDiagnosedEvent e pede o orçamento ao Finance."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code + ' (esperado: 200, 204)', function () { pm.expect([200, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Saga: esperado BUDGET_GENERATED",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{sagaUrl}}/sagas/{{workOrderId}}",
+              "host": [
+                "{{sagaUrl}}"
+              ],
+              "path": [
+                "sagas",
+                "{{workOrderId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// a saga e assincrona: espera um instante antes de consultar",
+                  "setTimeout(function () {}, 1500);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code + ' (esperado: 200)', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  "const body = pm.response.json();",
+                  "const s = body.saga || (body.content && body.content[0]) || {};",
+                  "const tries = Number(pm.collectionVariables.get('_tries') || 0);",
+                  "if (s.state !== 'BUDGET_GENERATED' && tries < 6) {",
+                  "  pm.collectionVariables.set('_tries', tries + 1);",
+                  "  console.log('saga em ' + s.state + ', esperando BUDGET_GENERATED (tentativa ' + (tries + 1) + ')');",
+                  "  postman.setNextRequest(pm.info.requestName);",
+                  "} else {",
+                  "  pm.collectionVariables.set('_tries', 0);",
+                  "  pm.test('saga em BUDGET_GENERATED (atual: ' + s.state + (s.pauseReason ? ', pausa: ' + s.pauseReason : '') + ')', function () { pm.expect(s.state).to.eql('BUDGET_GENERATED'); });",
+                  "}",
+                  "const sg = pm.response.json().saga; if (sg) { console.log('Total do orçamento: ' + sg.budgetTotal); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Limpar caixa do Mailpit (opcional)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{mailpitUrl}}/api/v1/messages",
+              "host": [
+                "{{mailpitUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "messages"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Apaga os e-mails antigos para o próximo ser o do orçamento."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code + ' (esperado: 200)', function () { pm.expect([200]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Enviar orçamento ao cliente",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{financeUrl}}/budgets/{{workOrderId}}/send",
+              "host": [
+                "{{financeUrl}}"
+              ],
+              "path": [
+                "budgets",
+                "{{workOrderId}}",
+                "send"
+              ]
+            },
+            "description": "O Finance envia o e-mail com os links de decisão (cai no Mailpit)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code + ' (esperado: 200, 204)', function () { pm.expect([200, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Saga: esperado AWAITING_CUSTOMER_DECISION",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{sagaUrl}}/sagas/{{workOrderId}}",
+              "host": [
+                "{{sagaUrl}}"
+              ],
+              "path": [
+                "sagas",
+                "{{workOrderId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// a saga e assincrona: espera um instante antes de consultar",
+                  "setTimeout(function () {}, 1500);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code + ' (esperado: 200)', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  "const body = pm.response.json();",
+                  "const s = body.saga || (body.content && body.content[0]) || {};",
+                  "const tries = Number(pm.collectionVariables.get('_tries') || 0);",
+                  "if (s.state !== 'AWAITING_CUSTOMER_DECISION' && tries < 6) {",
+                  "  pm.collectionVariables.set('_tries', tries + 1);",
+                  "  console.log('saga em ' + s.state + ', esperando AWAITING_CUSTOMER_DECISION (tentativa ' + (tries + 1) + ')');",
+                  "  postman.setNextRequest(pm.info.requestName);",
+                  "} else {",
+                  "  pm.collectionVariables.set('_tries', 0);",
+                  "  pm.test('saga em AWAITING_CUSTOMER_DECISION (atual: ' + s.state + (s.pauseReason ? ', pausa: ' + s.pauseReason : '') + ')', function () { pm.expect(s.state).to.eql('AWAITING_CUSTOMER_DECISION'); });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Imprimir orçamento",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{financeUrl}}/budgets/{{workOrderId}}/print",
+              "host": [
+                "{{financeUrl}}"
+              ],
+              "path": [
+                "budgets",
+                "{{workOrderId}}",
+                "print"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code + ' (esperado: 200)', function () { pm.expect([200]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4A. Obter o token do link (Mailpit)",
+      "item": [
+        {
+          "name": "Mailpit: listar e-mails",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{mailpitUrl}}/api/v1/messages",
+              "host": [
+                "{{mailpitUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "messages"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Pega o e-mail mais recente (o do orçamento) e guarda o id em {{mailId}}."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code + ' (esperado: 200)', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  "const msgs = pm.response.json().messages || [];",
+                  "pm.test('há e-mail no Mailpit (rode antes: Enviar orçamento)', function () { pm.expect(msgs.length).to.be.above(0); });",
+                  "if (msgs.length) { pm.collectionVariables.set('mailId', msgs[0].ID); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mailpit: ler e-mail e extrair o token do link",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{mailpitUrl}}/api/v1/message/{{mailId}}",
+              "host": [
+                "{{mailpitUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "message",
+                "{{mailId}}"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Extrai da página do e-mail o token do link de decisão e guarda em {{budgetToken}}."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code + ' (esperado: 200)', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  "const html = pm.response.json().HTML || '';",
+                  "const m = html.match(/budget-decision\\/([0-9a-f-]{36})\\/form\\?action=APPROVED/);",
+                  "pm.test('achou o link de aprovação', function () { pm.expect(m).to.not.be.null; });",
+                  "if (m) { pm.collectionVariables.set('budgetToken', m[1]); }"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": "Lê o e-mail do orçamento no Mailpit e guarda o token do link em {{budgetToken}}. Rode depois de 'Enviar orçamento ao cliente'."
+    },
+    {
+      "name": "4B. Decisão do cliente: aprovar (link, rota pública)",
+      "item": [
+        {
+          "name": "Abrir formulário de aprovação (HTML)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{financeUrl}}/budget-decision/{{budgetToken}}/form?action=APPROVED",
+              "host": [
+                "{{financeUrl}}"
+              ],
+              "path": [
+                "budget-decision",
+                "{{budgetToken}}",
+                "form"
+              ],
+              "query": [
+                {
+                  "key": "action",
+                  "value": "APPROVED"
+                }
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code + ' (esperado: 200)', function () { pm.expect([200]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Aprovar orçamento",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{financeUrl}}/budget-decision/{{budgetToken}}?action=APPROVED&observation=ok",
+              "host": [
+                "{{financeUrl}}"
+              ],
+              "path": [
+                "budget-decision",
+                "{{budgetToken}}"
+              ],
+              "query": [
+                {
+                  "key": "action",
+                  "value": "APPROVED"
+                },
+                {
+                  "key": "observation",
+                  "value": "ok"
+                }
+              ]
+            },
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": []
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Sem JWT: o token do link é a credencial. Uso único."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code + ' (esperado: 200)', function () { pm.expect([200]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Saga: esperado AWAITING_EXECUTION",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{sagaUrl}}/sagas/{{workOrderId}}",
+              "host": [
+                "{{sagaUrl}}"
+              ],
+              "path": [
+                "sagas",
+                "{{workOrderId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// a saga e assincrona: espera um instante antes de consultar",
+                  "setTimeout(function () {}, 1500);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code + ' (esperado: 200)', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  "const body = pm.response.json();",
+                  "const s = body.saga || (body.content && body.content[0]) || {};",
+                  "const tries = Number(pm.collectionVariables.get('_tries') || 0);",
+                  "if (s.state !== 'AWAITING_EXECUTION' && tries < 6) {",
+                  "  pm.collectionVariables.set('_tries', tries + 1);",
+                  "  console.log('saga em ' + s.state + ', esperando AWAITING_EXECUTION (tentativa ' + (tries + 1) + ')');",
+                  "  postman.setNextRequest(pm.info.requestName);",
+                  "} else {",
+                  "  pm.collectionVariables.set('_tries', 0);",
+                  "  pm.test('saga em AWAITING_EXECUTION (atual: ' + s.state + (s.pauseReason ? ', pausa: ' + s.pauseReason : '') + ')', function () { pm.expect(s.state).to.eql('AWAITING_EXECUTION'); });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reusar o link (deve ser recusado)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{financeUrl}}/budget-decision/{{budgetToken}}?action=REJECTED",
+              "host": [
+                "{{financeUrl}}"
+              ],
+              "path": [
+                "budget-decision",
+                "{{budgetToken}}"
+              ],
+              "query": [
+                {
+                  "key": "action",
+                  "value": "REJECTED"
+                }
+              ]
+            },
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": []
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "O token é de uso único: a resposta é uma página 'link já utilizado'."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('resposta indica link já utilizado', function () { pm.expect(pm.response.text().toLowerCase()).to.include('utilizado'); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. Execução",
+      "item": [
+        {
+          "name": "Iniciar execução da OS",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{workorderUrl}}/work-orders/{{workOrderId}}/step/start-execution",
+              "host": [
+                "{{workorderUrl}}"
+              ],
+              "path": [
+                "work-orders",
+                "{{workOrderId}}",
+                "step",
+                "start-execution"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code + ' (esperado: 200, 204)', function () { pm.expect([200, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Iniciar tarefa de mão de obra",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{workorderUrl}}/work-orders/{{workOrderId}}/labors/{{laborItemId}}/start",
+              "host": [
+                "{{workorderUrl}}"
+              ],
+              "path": [
+                "work-orders",
+                "{{workOrderId}}",
+                "labors",
+                "{{laborItemId}}",
+                "start"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code + ' (esperado: 200, 204)', function () { pm.expect([200, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Finalizar tarefa de mão de obra",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{workorderUrl}}/work-orders/{{workOrderId}}/labors/{{laborItemId}}/finish",
+              "host": [
+                "{{workorderUrl}}"
+              ],
+              "path": [
+                "work-orders",
+                "{{workOrderId}}",
+                "labors",
+                "{{laborItemId}}",
+                "finish"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code + ' (esperado: 200, 204)', function () { pm.expect([200, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Finalizar execução da OS",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{workorderUrl}}/work-orders/{{workOrderId}}/step/finish-execution",
+              "host": [
+                "{{workorderUrl}}"
+              ],
+              "path": [
+                "work-orders",
+                "{{workOrderId}}",
+                "step",
+                "finish-execution"
+              ]
+            },
+            "description": "A saga pede o link de pagamento ao Finance (AWAITING_PAYMENT_LINK)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code + ' (esperado: 200, 204)', function () { pm.expect([200, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Saga: esperado link de pagamento gerado",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{sagaUrl}}/sagas/{{workOrderId}}",
+              "host": [
+                "{{sagaUrl}}"
+              ],
+              "path": [
+                "sagas",
+                "{{workOrderId}}"
+              ]
+            },
+            "description": "Espera a saga gerar o link de pagamento. Se pausar em PaymentLinkGenerationFailed, faltam as credenciais de teste do Mercado Pago (MERCADO_PAGO_ACCESS_TOKEN e MERCADO_PAGO_PUBLIC_KEY) no .env do Finance."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// a saga e assincrona: espera um instante antes de consultar",
+                  "setTimeout(function () {}, 1500);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code + ' (esperado: 200)', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  "const s = pm.response.json().saga;",
+                  "const waiting = ['AWAITING_EXECUTION', 'IN_EXECUTION', 'AWAITING_PAYMENT_LINK'];",
+                  "const tries = Number(pm.collectionVariables.get('_tries') || 0);",
+                  "if (waiting.includes(s.state) && tries < 8) {",
+                  "  pm.collectionVariables.set('_tries', tries + 1);",
+                  "  postman.setNextRequest(pm.info.requestName);",
+                  "} else {",
+                  "  pm.collectionVariables.set('_tries', 0);",
+                  "  pm.test('link de pagamento gerado, saga em ' + s.state + (s.pauseReason ? ' (pausa: ' + s.pauseReason + ')' : ''), function () {",
+                  "    pm.expect(['AWAITING_PAYMENT', 'AWAITING_DELIVERY', 'COMPLETED']).to.include(s.state);",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6. Pagamento e entrega",
+      "item": [
+        {
+          "name": "Saga: esperado AWAITING_DELIVERY",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{sagaUrl}}/sagas/{{workOrderId}}",
+              "host": [
+                "{{sagaUrl}}"
+              ],
+              "path": [
+                "sagas",
+                "{{workOrderId}}"
+              ]
+            },
+            "description": "Com o cartão de teste (titular APRO) o Mercado Pago aprova sozinho; a verificação periódica (1 min) confirma o pagamento."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// a saga e assincrona: espera um instante antes de consultar",
+                  "setTimeout(function () {}, 1500);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code + ' (esperado: 200)', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  "const body = pm.response.json();",
+                  "const s = body.saga || (body.content && body.content[0]) || {};",
+                  "const tries = Number(pm.collectionVariables.get('_tries') || 0);",
+                  "if (s.state !== 'AWAITING_DELIVERY' && tries < 6) {",
+                  "  pm.collectionVariables.set('_tries', tries + 1);",
+                  "  console.log('saga em ' + s.state + ', esperando AWAITING_DELIVERY (tentativa ' + (tries + 1) + ')');",
+                  "  postman.setNextRequest(pm.info.requestName);",
+                  "} else {",
+                  "  pm.collectionVariables.set('_tries', 0);",
+                  "  pm.test('saga em AWAITING_DELIVERY (atual: ' + s.state + (s.pauseReason ? ', pausa: ' + s.pauseReason : '') + ')', function () { pm.expect(s.state).to.eql('AWAITING_DELIVERY'); });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Entregar veículo",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{workorderUrl}}/work-orders/{{workOrderId}}/step/deliver",
+              "host": [
+                "{{workorderUrl}}"
+              ],
+              "path": [
+                "work-orders",
+                "{{workOrderId}}",
+                "step",
+                "deliver"
+              ]
+            },
+            "description": "Só vale depois do pagamento confirmado (a OS passa a PAID pelo command da saga)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code + ' (esperado: 200, 204)', function () { pm.expect([200, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Saga: esperado COMPLETED",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{sagaUrl}}/sagas/{{workOrderId}}",
+              "host": [
+                "{{sagaUrl}}"
+              ],
+              "path": [
+                "sagas",
+                "{{workOrderId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// a saga e assincrona: espera um instante antes de consultar",
+                  "setTimeout(function () {}, 1500);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code + ' (esperado: 200)', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  "const body = pm.response.json();",
+                  "const s = body.saga || (body.content && body.content[0]) || {};",
+                  "const tries = Number(pm.collectionVariables.get('_tries') || 0);",
+                  "if (s.state !== 'COMPLETED' && tries < 6) {",
+                  "  pm.collectionVariables.set('_tries', tries + 1);",
+                  "  console.log('saga em ' + s.state + ', esperando COMPLETED (tentativa ' + (tries + 1) + ')');",
+                  "  postman.setNextRequest(pm.info.requestName);",
+                  "} else {",
+                  "  pm.collectionVariables.set('_tries', 0);",
+                  "  pm.test('saga em COMPLETED (atual: ' + s.state + (s.pauseReason ? ', pausa: ' + s.pauseReason : '') + ')', function () { pm.expect(s.state).to.eql('COMPLETED'); });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "7. Histórico e consultas",
+      "item": [
+        {
+          "name": "Histórico de status da OS (Workorder)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{workorderUrl}}/work-orders/{{workOrderId}}/history",
+              "host": [
+                "{{workorderUrl}}"
+              ],
+              "path": [
+                "work-orders",
+                "{{workOrderId}}",
+                "history"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code + ' (esperado: 200)', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  "pm.test('tem transições', function () { pm.expect(pm.response.json().length).to.be.above(0); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Histórico da saga (uma OS)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{sagaUrl}}/sagas/{{workOrderId}}",
+              "host": [
+                "{{sagaUrl}}"
+              ],
+              "path": [
+                "sagas",
+                "{{workOrderId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code + ' (esperado: 200)', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  "pm.test('tem histórico', function () { pm.expect(pm.response.json().history.length).to.be.above(0); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar sagas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{sagaUrl}}/sagas?page=0&size=20&sortBy=createdAt&direction=DESC",
+              "host": [
+                "{{sagaUrl}}"
+              ],
+              "path": [
+                "sagas"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                },
+                {
+                  "key": "sortBy",
+                  "value": "createdAt"
+                },
+                {
+                  "key": "direction",
+                  "value": "DESC"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code + ' (esperado: 200)', function () { pm.expect([200]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar sagas pausadas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{sagaUrl}}/sagas?state=PAUSED",
+              "host": [
+                "{{sagaUrl}}"
+              ],
+              "path": [
+                "sagas"
+              ],
+              "query": [
+                {
+                  "key": "state",
+                  "value": "PAUSED"
+                }
+              ]
+            },
+            "description": "Mostra as sagas que aguardam intervenção, com o motivo da pausa."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code + ' (esperado: 200)', function () { pm.expect([200]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar sagas por etapa",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{sagaUrl}}/sagas?step=PAYMENT",
+              "host": [
+                "{{sagaUrl}}"
+              ],
+              "path": [
+                "sagas"
+              ],
+              "query": [
+                {
+                  "key": "step",
+                  "value": "PAYMENT"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code + ' (esperado: 200)', function () { pm.expect([200]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar OS (público)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{workorderUrl}}/work-orders",
+              "host": [
+                "{{workorderUrl}}"
+              ],
+              "path": [
+                "work-orders"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code + ' (esperado: 200)', function () { pm.expect([200]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Relatório: tempo de execução das OS",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{workorderUrl}}/analytics/work-orders/execution-time",
+              "host": [
+                "{{workorderUrl}}"
+              ],
+              "path": [
+                "analytics",
+                "work-orders",
+                "execution-time"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code + ' (esperado: 200)', function () { pm.expect([200]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "8. Cenários alternativos (use uma OS nova em cada um)",
+      "item": [
+        {
+          "name": "8A. Cancelamento da OS",
+          "item": [
+            {
+              "name": "Cancelar a OS (compensação)",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{workorderUrl}}/work-orders/{{workOrderId}}/step/cancel",
+                  "host": [
+                    "{{workorderUrl}}"
+                  ],
+                  "path": [
+                    "work-orders",
+                    "{{workOrderId}}",
+                    "step",
+                    "cancel"
+                  ]
+                },
+                "description": "Vale em qualquer etapa. A saga entra em CANCELING, compensa o que foi feito e termina em CANCELED."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status ' + pm.response.code + ' (esperado: 200, 204)', function () { pm.expect([200, 204]).to.include(pm.response.code); });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Saga: esperado CANCELED",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{sagaUrl}}/sagas/{{workOrderId}}",
+                  "host": [
+                    "{{sagaUrl}}"
+                  ],
+                  "path": [
+                    "sagas",
+                    "{{workOrderId}}"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "// a saga e assincrona: espera um instante antes de consultar",
+                      "setTimeout(function () {}, 1500);"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status ' + pm.response.code + ' (esperado: 200)', function () { pm.expect([200]).to.include(pm.response.code); });",
+                      "const body = pm.response.json();",
+                      "const s = body.saga || (body.content && body.content[0]) || {};",
+                      "const tries = Number(pm.collectionVariables.get('_tries') || 0);",
+                      "if (s.state !== 'CANCELED' && tries < 6) {",
+                      "  pm.collectionVariables.set('_tries', tries + 1);",
+                      "  console.log('saga em ' + s.state + ', esperando CANCELED (tentativa ' + (tries + 1) + ')');",
+                      "  postman.setNextRequest(pm.info.requestName);",
+                      "} else {",
+                      "  pm.collectionVariables.set('_tries', 0);",
+                      "  pm.test('saga em CANCELED (atual: ' + s.state + (s.pauseReason ? ', pausa: ' + s.pauseReason : '') + ')', function () { pm.expect(s.state).to.eql('CANCELED'); });",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "description": "Pré-requisito: uma OS nova (pastas 0 e 2). Pode ser cancelada em qualquer ponto do fluxo."
+        },
+        {
+          "name": "8B. Cliente rejeita o orçamento",
+          "item": [
+            {
+              "name": "Rejeitar orçamento (link)",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{financeUrl}}/budget-decision/{{budgetToken}}?action=REJECTED&observation=caro demais",
+                  "host": [
+                    "{{financeUrl}}"
+                  ],
+                  "path": [
+                    "budget-decision",
+                    "{{budgetToken}}"
+                  ],
+                  "query": [
+                    {
+                      "key": "action",
+                      "value": "REJECTED"
+                    },
+                    {
+                      "key": "observation",
+                      "value": "caro demais"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "urlencoded",
+                  "urlencoded": []
+                },
+                "auth": {
+                  "type": "noauth"
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status ' + pm.response.code + ' (esperado: 200)', function () { pm.expect([200]).to.include(pm.response.code); });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Saga: esperado CANCELED",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{sagaUrl}}/sagas/{{workOrderId}}",
+                  "host": [
+                    "{{sagaUrl}}"
+                  ],
+                  "path": [
+                    "sagas",
+                    "{{workOrderId}}"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "// a saga e assincrona: espera um instante antes de consultar",
+                      "setTimeout(function () {}, 1500);"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status ' + pm.response.code + ' (esperado: 200)', function () { pm.expect([200]).to.include(pm.response.code); });",
+                      "const body = pm.response.json();",
+                      "const s = body.saga || (body.content && body.content[0]) || {};",
+                      "const tries = Number(pm.collectionVariables.get('_tries') || 0);",
+                      "if (s.state !== 'CANCELED' && tries < 6) {",
+                      "  pm.collectionVariables.set('_tries', tries + 1);",
+                      "  console.log('saga em ' + s.state + ', esperando CANCELED (tentativa ' + (tries + 1) + ')');",
+                      "  postman.setNextRequest(pm.info.requestName);",
+                      "} else {",
+                      "  pm.collectionVariables.set('_tries', 0);",
+                      "  pm.test('saga em CANCELED (atual: ' + s.state + (s.pauseReason ? ', pausa: ' + s.pauseReason : '') + ')', function () { pm.expect(s.state).to.eql('CANCELED'); });",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "description": "Pré-requisito: uma OS nova até o e-mail do orçamento (pastas 0, 2, 3 e 4A). A saga cancela a OS."
+        },
+        {
+          "name": "8C. Cliente pede alterações",
+          "item": [
+            {
+              "name": "Pedir alterações (link)",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{financeUrl}}/budget-decision/{{budgetToken}}?action=CHANGES_REQUESTED&observation=trocar o filtro",
+                  "host": [
+                    "{{financeUrl}}"
+                  ],
+                  "path": [
+                    "budget-decision",
+                    "{{budgetToken}}"
+                  ],
+                  "query": [
+                    {
+                      "key": "action",
+                      "value": "CHANGES_REQUESTED"
+                    },
+                    {
+                      "key": "observation",
+                      "value": "trocar o filtro"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "urlencoded",
+                  "urlencoded": []
+                },
+                "auth": {
+                  "type": "noauth"
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status ' + pm.response.code + ' (esperado: 200)', function () { pm.expect([200]).to.include(pm.response.code); });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Saga: esperado CHANGES_REQUESTED",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{sagaUrl}}/sagas/{{workOrderId}}",
+                  "host": [
+                    "{{sagaUrl}}"
+                  ],
+                  "path": [
+                    "sagas",
+                    "{{workOrderId}}"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "// a saga e assincrona: espera um instante antes de consultar",
+                      "setTimeout(function () {}, 1500);"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status ' + pm.response.code + ' (esperado: 200)', function () { pm.expect([200]).to.include(pm.response.code); });",
+                      "const body = pm.response.json();",
+                      "const s = body.saga || (body.content && body.content[0]) || {};",
+                      "const tries = Number(pm.collectionVariables.get('_tries') || 0);",
+                      "if (s.state !== 'CHANGES_REQUESTED' && tries < 6) {",
+                      "  pm.collectionVariables.set('_tries', tries + 1);",
+                      "  console.log('saga em ' + s.state + ', esperando CHANGES_REQUESTED (tentativa ' + (tries + 1) + ')');",
+                      "  postman.setNextRequest(pm.info.requestName);",
+                      "} else {",
+                      "  pm.collectionVariables.set('_tries', 0);",
+                      "  pm.test('saga em CHANGES_REQUESTED (atual: ' + s.state + (s.pauseReason ? ', pausa: ' + s.pauseReason : '') + ')', function () { pm.expect(s.state).to.eql('CHANGES_REQUESTED'); });",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "description": "Pré-requisito: uma OS nova até o e-mail do orçamento (pastas 0, 2, 3 e 4A). A OS volta a ser editável."
+        },
+        {
+          "name": "8D. Aprovar pela API (atendente)",
+          "item": [
+            {
+              "name": "Decidir orçamento pela API (aprovar)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{financeUrl}}/budgets/{{workOrderId}}/decision",
+                  "host": [
+                    "{{financeUrl}}"
+                  ],
+                  "path": [
+                    "budgets",
+                    "{{workOrderId}}",
+                    "decision"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"decision\": \"APPROVED\",\n  \"observation\": \"aprovado por telefone\"\n}"
+                },
+                "description": "Alternativa autenticada ao link do e-mail. O orçamento precisa estar aguardando decisão (enviado e ainda não ajustado)."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status ' + pm.response.code + ' (esperado: 200, 204)', function () { pm.expect([200, 204]).to.include(pm.response.code); });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Saga: esperado AWAITING_EXECUTION",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{sagaUrl}}/sagas/{{workOrderId}}",
+                  "host": [
+                    "{{sagaUrl}}"
+                  ],
+                  "path": [
+                    "sagas",
+                    "{{workOrderId}}"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "// a saga e assincrona: espera um instante antes de consultar",
+                      "setTimeout(function () {}, 1500);"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status ' + pm.response.code + ' (esperado: 200)', function () { pm.expect([200]).to.include(pm.response.code); });",
+                      "const body = pm.response.json();",
+                      "const s = body.saga || (body.content && body.content[0]) || {};",
+                      "const tries = Number(pm.collectionVariables.get('_tries') || 0);",
+                      "if (s.state !== 'AWAITING_EXECUTION' && tries < 6) {",
+                      "  pm.collectionVariables.set('_tries', tries + 1);",
+                      "  console.log('saga em ' + s.state + ', esperando AWAITING_EXECUTION (tentativa ' + (tries + 1) + ')');",
+                      "  postman.setNextRequest(pm.info.requestName);",
+                      "} else {",
+                      "  pm.collectionVariables.set('_tries', 0);",
+                      "  pm.test('saga em AWAITING_EXECUTION (atual: ' + s.state + (s.pauseReason ? ', pausa: ' + s.pauseReason : '') + ')', function () { pm.expect(s.state).to.eql('AWAITING_EXECUTION'); });",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "description": "Pré-requisito: uma OS nova até o orçamento enviado (pastas 0, 2 e 3)."
+        },
+        {
+          "name": "8E. Ajustar e recalcular o orçamento (atendente)",
+          "item": [
+            {
+              "name": "Ajustar valor do orçamento",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{financeUrl}}/budgets/{{workOrderId}}",
+                  "host": [
+                    "{{financeUrl}}"
+                  ],
+                  "path": [
+                    "budgets",
+                    "{{workOrderId}}"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"newTotalPrice\": 500.0\n}"
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status ' + pm.response.code + ' (esperado: 200, 204)', function () { pm.expect([200, 204]).to.include(pm.response.code); });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Recalcular orçamento",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{financeUrl}}/budgets/{{workOrderId}}/recalculate",
+                  "host": [
+                    "{{financeUrl}}"
+                  ],
+                  "path": [
+                    "budgets",
+                    "{{workOrderId}}",
+                    "recalculate"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status ' + pm.response.code + ' (esperado: 200, 204)', function () { pm.expect([200, 204]).to.include(pm.response.code); });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Reenviar orçamento ao cliente",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{financeUrl}}/budgets/{{workOrderId}}/send",
+                  "host": [
+                    "{{financeUrl}}"
+                  ],
+                  "path": [
+                    "budgets",
+                    "{{workOrderId}}",
+                    "send"
+                  ]
+                },
+                "description": "Ajustar ou recalcular tira o orçamento de 'aguardando decisão'; é preciso reenviá-lo."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status ' + pm.response.code + ' (esperado: 200, 204)', function () { pm.expect([200, 204]).to.include(pm.response.code); });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Saga: esperado AWAITING_CUSTOMER_DECISION",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{sagaUrl}}/sagas/{{workOrderId}}",
+                  "host": [
+                    "{{sagaUrl}}"
+                  ],
+                  "path": [
+                    "sagas",
+                    "{{workOrderId}}"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "// a saga e assincrona: espera um instante antes de consultar",
+                      "setTimeout(function () {}, 1500);"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status ' + pm.response.code + ' (esperado: 200)', function () { pm.expect([200]).to.include(pm.response.code); });",
+                      "const body = pm.response.json();",
+                      "const s = body.saga || (body.content && body.content[0]) || {};",
+                      "const tries = Number(pm.collectionVariables.get('_tries') || 0);",
+                      "if (s.state !== 'AWAITING_CUSTOMER_DECISION' && tries < 6) {",
+                      "  pm.collectionVariables.set('_tries', tries + 1);",
+                      "  console.log('saga em ' + s.state + ', esperando AWAITING_CUSTOMER_DECISION (tentativa ' + (tries + 1) + ')');",
+                      "  postman.setNextRequest(pm.info.requestName);",
+                      "} else {",
+                      "  pm.collectionVariables.set('_tries', 0);",
+                      "  pm.test('saga em AWAITING_CUSTOMER_DECISION (atual: ' + s.state + (s.pauseReason ? ', pausa: ' + s.pauseReason : '') + ')', function () { pm.expect(s.state).to.eql('AWAITING_CUSTOMER_DECISION'); });",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "description": "Pré-requisito: uma OS nova até o orçamento enviado (pastas 0, 2 e 3)."
+        }
+      ]
+    }
+  ]
+}
