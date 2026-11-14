@@ -19,12 +19,15 @@
 
     <properties>
         <java.version>21</java.version>
+        <!-- Byte Buddy (usado pelo Mockito) com suporte ao Java 25, para quem roda os testes na IDE com JDK mais novo que o 21 -->
+        <byte-buddy.version>1.17.8</byte-buddy.version>
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
         <sonar.coverage.jacoco.xmlReportPaths>target/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
         <spring-framework.version>6.2.3</spring-framework.version>
         <springdoc.version>2.8.5</springdoc.version>
         <testcontainers.version>1.21.4</testcontainers.version>
         <newrelic.logging.version>3.5.0</newrelic.logging.version>
+        <cucumber.version>7.20.1</cucumber.version>
     </properties>
 
     <dependencies>
@@ -35,6 +38,23 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.cucumber</groupId>
+            <artifactId>cucumber-java</artifactId>
+            <version>${cucumber.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.cucumber</groupId>
+            <artifactId>cucumber-junit-platform-engine</artifactId>
+            <version>${cucumber.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.platform</groupId>
+            <artifactId>junit-platform-suite</artifactId>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.springframework.security</groupId>
