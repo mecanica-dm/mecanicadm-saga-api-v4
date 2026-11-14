@@ -36,6 +36,7 @@ flowchart LR
         wo_out{{"workorder-output"}}
         fn_out{{"finance-output"}}
         sg_out{{"saga-output"}}
+        sg_in{{"saga-input"}}
         wo_in{{"workorder-input"}}
         fn_in{{"finance-input"}}
         q_wo_ev["fila saga.workorder-events"]
@@ -57,8 +58,10 @@ flowchart LR
     fn_api --- fn_db
     sg_core --- sg_db
 
-    wo_api -->|"eventos da OS"| wo_out --> q_wo_ev --> sg_core
-    fn_api -->|"eventos de orçamento e pagamento"| fn_out --> q_fn_ev --> sg_core
+    wo_api -->|"eventos da OS"| wo_out --> sg_in
+    fn_api -->|"eventos de orçamento e pagamento"| fn_out --> sg_in
+    sg_in --> q_wo_ev --> sg_core
+    sg_in --> q_fn_ev --> sg_core
 
     sg_core -->|"commands"| sg_out
     sg_out --> wo_in --> q_wo --> wo_api
@@ -67,7 +70,6 @@ flowchart LR
     fn_in --> q_payment --> fn_api
 
     fn_api -->|"cria, cancela e estorna pedidos"| mp
-    mp -.->|"webhook do pagamento"| fn_api
     fn_api -->|"orçamento com PDF e links"| email
 ```
 
@@ -78,7 +80,7 @@ Cada fila tem a sua DLQ (`<fila>.dlq`). A topologia completa dos três serviços
 - **Eventos** (passado: "isto aconteceu") saem de cada serviço pela sua exchange de saída e chegam à saga. **Commands** (pedido: "faça isto") saem da saga pela `saga-output` e chegam ao serviço de destino.
 - O nome da classe da mensagem vai no header `event-type`, e o identificador único, no header `message-id`. O `workOrderId` identifica a OS em tudo.
 - **Outbox**: o evento é gravado no banco do serviço, na mesma transação da mudança, e um publicador o envia ao RabbitMQ. **Inbox**: cada mensagem recebida é registrada pelo `message-id`, e a repetida é ignorada. Assim a entrega *at-least-once* do RabbitMQ vira processamento *effectively-once*.
-- O Finance também recebe o **webhook do Mercado Pago** (rota pública protegida por assinatura) com o resultado dos pagamentos, e uma rotina de consulta o reconcilia.
+- O Finance descobre o resultado dos pagamentos pendentes por uma rotina de consulta ao Mercado Pago (a cada minuto).
 - Quando um serviço recusa um command por regra de negócio, publica um evento de recusa (`WorkOrderCommandRejectedEvent` ou `FinanceCommandRejectedEvent`), e a saga decide o que fazer. Falha técnica não gera evento: a mensagem vai para a DLQ.
 - As APIs HTTP exigem o **mesmo JWT**, emitido pelo login da Workorder (segredo `JWT_SECRET` compartilhado). Cada README lista as poucas rotas públicas, como o link de decisão do orçamento que o cliente recebe por e-mail, protegido pelo token do próprio link.
 

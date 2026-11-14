@@ -213,8 +213,9 @@ Logs estruturados por evento do fluxo (`SAGA_PAUSED`, `SAGA_COMPENSATED`, `SAGA_
 | Nível | O que cobre |
 |---|---|
 | Unitários (183) | Motor, steps, compensações, casos de uso e API, em Java puro, sem banco nem broker |
-| Integração (36) | MongoDB (transações, consultas, lock), RabbitMQ e o ciclo completo evento → saga → outbox, com Testcontainers |
-| Cobertura | 92,7% das linhas, 93,9% das instruções e 80,9% dos branches (JaCoCo) |
+| BDD (10 cenários) | O fluxo completo e as compensações em Gherkin (português), pelo caso de uso real, com repositório em memória |
+| Integração (39) | MongoDB (transações, consultas, lock), RabbitMQ e o ciclo completo evento → saga → outbox, com Testcontainers |
+| Cobertura | 92,3% das linhas, 93,7% das instruções e 81,6% dos branches (JaCoCo) |
 
 O `RabbitMQConfigTest` garante que todo evento tem binding. O `SagaDefinition` garante que todo evento tem regra.
 
