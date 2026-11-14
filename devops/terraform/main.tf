@@ -24,10 +24,9 @@ resource "mongodbatlas_project" "main" {
 # custo por hora.
 # ---------------------------------------------------------------------------
 resource "mongodbatlas_advanced_cluster" "main" {
-  project_id             = mongodbatlas_project.main.id
-  name                   = local.atlas_cluster_name
-  cluster_type           = "REPLICASET"
-  mongo_db_major_version = var.mongodb_version
+  project_id   = mongodbatlas_project.main.id
+  name         = local.atlas_cluster_name
+  cluster_type = "REPLICASET"
 
   replication_specs = [
     {

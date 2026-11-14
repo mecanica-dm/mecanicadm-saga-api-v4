@@ -58,12 +58,6 @@ variable "atlas_region" {
   default     = "US_EAST_1"
 }
 
-variable "mongodb_version" {
-  description = "Versão major do MongoDB do cluster (ex.: 7.0). O compose local usa mongo:7.0; mantenha as duas iguais."
-  type        = string
-  default     = "7.0"
-}
-
 variable "mongodb_db_name" {
   description = "Nome do banco usado pela saga (precisa bater com o banco da MONGODB_URI da aplicação)."
   type        = string
