@@ -26,6 +26,7 @@ public class BudgetStep implements SagaFlowStep {
     public List<TransitionRule<?>> rules() {
         return List.of(
                 TransitionRule.on(WorkOrderDiagnosedEvent.class, inState(SagaState.WORK_ORDER_OPEN), this::requestBudget),
+                TransitionRule.on(WorkOrderDiagnosedEvent.class, inState(SagaState.CHANGES_REQUESTED), this::requestRevisedBudget),
                 TransitionRule.on(BudgetGeneratedEvent.class, inState(SagaState.AWAITING_BUDGET), this::registerGeneratedBudget),
                 TransitionRule.on(BudgetUpdatedEvent.class,
                         inState(SagaState.BUDGET_GENERATED, SagaState.AWAITING_CUSTOMER_DECISION), this::registerUpdatedBudget),
@@ -43,6 +44,11 @@ public class BudgetStep implements SagaFlowStep {
     private List<SagaCommand> requestBudget(SagaInstance saga, WorkOrderDiagnosedEvent event) {
         saga.moveTo(SagaState.AWAITING_BUDGET);
         return List.of(GenerateBudgetIntegrationCommand.from(saga.getWorkOrderId(), saga.getWorkOrder()));
+    }
+
+    private List<SagaCommand> requestRevisedBudget(SagaInstance saga, WorkOrderDiagnosedEvent event) {
+        saga.discardBudget();
+        return requestBudget(saga, event);
     }
 
     private List<SagaCommand> registerGeneratedBudget(SagaInstance saga, BudgetGeneratedEvent event) {

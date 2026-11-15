@@ -147,6 +147,7 @@ stateDiagram-v2
     AWAITING_CUSTOMER_DECISION --> AWAITING_EXECUTION: aprovado
     AWAITING_CUSTOMER_DECISION --> CHANGES_REQUESTED: cliente pede alterações
     CHANGES_REQUESTED --> WORK_ORDER_OPEN: OS alterada
+    CHANGES_REQUESTED --> AWAITING_BUDGET: OS diagnosticada de novo
     AWAITING_CUSTOMER_DECISION --> CANCELING: rejeitado ou expirado
     AWAITING_EXECUTION --> IN_EXECUTION
     IN_EXECUTION --> AWAITING_PAYMENT_LINK: execução concluída
@@ -569,7 +570,7 @@ Os cenários ficam em `src/test/resources/features`, escritos em português (`# 
 | Feature | Cenários |
 |---|---|
 | `fluxo_completo_da_os.feature` | A OS percorre o fluxo completo, da abertura à entrega do veículo, com o estado e o command de cada passo; eventos repetidos depois da conclusão são ignorados |
-| `compensacao_e_falhas.feature` | Rejeição e expiração do orçamento cancelam a OS; cancelar depois do pagamento estorna e cancela o orçamento, e só conclui com as confirmações; command recusado pela Workorder; alteração da OS com orçamento ativo; falha no link de pagamento pausa e depois retoma; evento repetido é ignorado; evento à frente pausa a saga |
+| `compensacao_e_falhas.feature` | Rejeição e expiração do orçamento cancelam a OS; cancelar depois do pagamento estorna e cancela o orçamento, e só conclui com as confirmações; command recusado pela Workorder; alteração da OS com orçamento ativo; pedido de alterações seguido de novo diagnóstico; falha no link de pagamento pausa e depois retoma; evento repetido é ignorado; evento à frente pausa a saga |
 
 Exemplo (trecho de `compensacao_e_falhas.feature`):
 

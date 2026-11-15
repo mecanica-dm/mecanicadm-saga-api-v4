@@ -86,6 +86,7 @@ Regras herdadas do padrão do projeto: inbox para idempotência, outbox transaci
 | `WorkOrderUpdatedEvent` | `AWAITING_BUDGET`, `BUDGET_GENERATED`, `AWAITING_CUSTOMER_DECISION`, `CHANGES_REQUESTED` | `CancelBudgetIntegrationCommand` | `WORK_ORDER_OPEN` |
 | `WorkOrderUpdatedEvent` | qualquer outro | nenhum (só atualiza o retrato da OS) | mantém |
 | `WorkOrderDiagnosedEvent` | `WORK_ORDER_OPEN` | `GenerateBudgetIntegrationCommand` (`workOrderId`, `workOrderSnapshot`) | `AWAITING_BUDGET` |
+| `WorkOrderDiagnosedEvent` | `CHANGES_REQUESTED` | `GenerateBudgetIntegrationCommand` (descarta o total antigo; o Finance sobrescreve o orçamento) | `AWAITING_BUDGET` |
 | `BudgetGeneratedEvent` | `AWAITING_BUDGET` | nenhum | `BUDGET_GENERATED` |
 | `BudgetUpdatedEvent` | `BUDGET_GENERATED`, `AWAITING_CUSTOMER_DECISION` | nenhum (atualiza o total) | mantém |
 | `BudgetSentForDecisionEvent` | `BUDGET_GENERATED`, `PAUSED` | nenhum | `AWAITING_CUSTOMER_DECISION` |

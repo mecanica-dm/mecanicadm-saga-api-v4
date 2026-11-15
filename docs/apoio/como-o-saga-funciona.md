@@ -369,7 +369,7 @@ O retrato do passo 2 é o guardado no passo 1 (e atualizado a cada `WorkOrderUpd
 | 3 | Falha no envio do orçamento | `BudgetSentForDecisionFailedEvent` → `PAUSED`. Retoma com `BudgetSentForDecisionEvent`. |
 | 4 | Falha ao gerar o link de pagamento | `PaymentLinkGenerationFailedEvent` → `PAUSED`. Retoma com `PaymentLinkGeneratedEvent`. |
 | 5 | Cliente rejeita o orçamento | `BudgetRejectedEvent` → `CANCELING` e envia `CancelWorkOrder`. Ao chegar o `WorkOrderCanceledEvent`, vai para `CANCELED` **sem** cancelar o orçamento de novo (o Finance já o rejeitou). |
-| 6 | Cliente pede alterações | `BudgetChangesRequestedEvent` → `CHANGES_REQUESTED` e envia `ChangesRequestedWorkOrder` com a observação. O mecânico edita a OS e chega o `WorkOrderUpdatedEvent`: compensa (`CancelBudget`) e volta a `WORK_ORDER_OPEN`. Edições seguintes só atualizam o retrato. No novo diagnóstico, o saga pede um orçamento novo. |
+| 6 | Cliente pede alterações | `BudgetChangesRequestedEvent` → `CHANGES_REQUESTED` e envia `ChangesRequestedWorkOrder` com a observação. O mecânico edita a OS e chega o `WorkOrderUpdatedEvent`: compensa (`CancelBudget`) e volta a `WORK_ORDER_OPEN`. Edições seguintes só atualizam o retrato. Se o mecânico diagnosticar de novo sem editar a OS, o `WorkOrderDiagnosedEvent` em `CHANGES_REQUESTED` também pede um orçamento novo (`AWAITING_BUDGET`). |
 | 7 | OS cancelada com o serviço em andamento | `WorkOrderCanceledEvent` → compensa (`CancelBudget`) e `CANCELED`. |
 | 8 | Orçamento expira | `BudgetCanceledEvent` sem o saga ter pedido o cancelamento → `CANCELING` e envia `CancelWorkOrder`. O `BudgetExpiredEvent` produz o mesmo efeito. |
 

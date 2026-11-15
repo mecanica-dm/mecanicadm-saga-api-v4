@@ -3,6 +3,7 @@ package com.mecanicadm.saga_api.bdd;
 import com.mecanicadm.saga_api.core.saga.domain.SagaState;
 import com.mecanicadm.saga_api.core.saga.event.BudgetApprovedEvent;
 import com.mecanicadm.saga_api.core.saga.event.BudgetCanceledEvent;
+import com.mecanicadm.saga_api.core.saga.event.BudgetChangesRequestedEvent;
 import com.mecanicadm.saga_api.core.saga.event.BudgetExpiredEvent;
 import com.mecanicadm.saga_api.core.saga.event.BudgetGeneratedEvent;
 import com.mecanicadm.saga_api.core.saga.event.BudgetRejectedEvent;
@@ -166,6 +167,7 @@ public class SagaStepDefinitions {
             case "BudgetSentForDecisionEvent" -> new BudgetSentForDecisionEvent(id);
             case "BudgetApprovedEvent" -> new BudgetApprovedEvent(id);
             case "BudgetRejectedEvent" -> new BudgetRejectedEvent(id);
+            case "BudgetChangesRequestedEvent" -> new BudgetChangesRequestedEvent(id, "Trocar so o oleo");
             case "BudgetExpiredEvent" -> new BudgetExpiredEvent(id);
             case "BudgetCanceledEvent" -> new BudgetCanceledEvent(id);
             case "PaymentLinkGeneratedEvent" -> new PaymentLinkGeneratedEvent(id, "https://pagamento.test/abc");

@@ -261,6 +261,26 @@ class SagaOrchestratorTest {
     }
 
     @Test
+    @DisplayName("Cenario 6b: novo diagnostico depois do pedido de alteracoes gera um novo orcamento e a aprovacao segue o fluxo")
+    void shouldRequestNewBudgetWhenWorkOrderIsDiagnosedAfterChangesRequested() {
+        SagaInstance saga = sagaIn(SagaState.AWAITING_CUSTOMER_DECISION);
+        orchestrator.handle(saga, new BudgetChangesRequestedEvent(workOrderId, "Trocar so o oleo"));
+        assertEquals(SagaState.CHANGES_REQUESTED, saga.getState());
+
+        List<SagaCommand> commands = orchestrator.handle(saga, new WorkOrderDiagnosedEvent(workOrderId));
+
+        assertInstanceOf(GenerateBudgetIntegrationCommand.class, commands.get(0));
+        assertEquals(SagaState.AWAITING_BUDGET, saga.getState());
+
+        orchestrator.handle(saga, new BudgetGeneratedEvent(workOrderId, new BigDecimal("100.00")));
+        orchestrator.handle(saga, new BudgetSentForDecisionEvent(workOrderId));
+        List<SagaCommand> approval = orchestrator.handle(saga, new BudgetApprovedEvent(workOrderId));
+
+        assertInstanceOf(AuthorizeWorkOrderIntegrationCommand.class, approval.get(0));
+        assertEquals(SagaState.AWAITING_EXECUTION, saga.getState());
+    }
+
+    @Test
     @DisplayName("Cenario 7: cancelamento da OS com servico em andamento cancela o orcamento e encerra a saga quando o Finance confirma")
     void shouldCancelBudgetWhenWorkOrderCanceledDuringExecution() {
         SagaInstance saga = sagaIn(SagaState.IN_EXECUTION);
