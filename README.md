@@ -570,7 +570,7 @@ Os cenários ficam em `src/test/resources/features`, escritos em português (`# 
 | Feature | Cenários |
 |---|---|
 | `fluxo_completo_da_os.feature` | A OS percorre o fluxo completo, da abertura à entrega do veículo, com o estado e o command de cada passo; eventos repetidos depois da conclusão são ignorados |
-| `compensacao_e_falhas.feature` | Rejeição e expiração do orçamento cancelam a OS; cancelar depois do pagamento estorna e cancela o orçamento, e só conclui com as confirmações; command recusado pela Workorder; alteração da OS com orçamento ativo; falha no link de pagamento pausa e depois retoma; evento repetido é ignorado; evento à frente pausa a saga |
+| `compensacao_e_falhas.feature` | Rejeição e expiração do orçamento cancelam a OS; cancelar depois do pagamento estorna e cancela o orçamento, e só conclui com as confirmações; command recusado pela Workorder; alteração da OS com orçamento ativo; pedido de alterações seguido de novo diagnóstico; falha no link de pagamento pausa e depois retoma; evento repetido é ignorado; evento à frente pausa a saga |
 
 Exemplo (trecho de `compensacao_e_falhas.feature`):
 

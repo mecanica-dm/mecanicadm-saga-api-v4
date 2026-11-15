@@ -53,6 +53,15 @@ Funcionalidade: Compensação e tratamento de falhas da saga
     E a saga enviou o command "CancelBudgetIntegrationCommand"
     E a saga descartou o total do orçamento
 
+  Cenário: O cliente pede alterações e o novo diagnóstico gera um novo orçamento
+    Dado que a saga da OS já chegou ao estado "AWAITING_CUSTOMER_DECISION"
+    Quando o Finance publica o evento "BudgetChangesRequestedEvent"
+    Então a saga está no estado "CHANGES_REQUESTED"
+    E a saga enviou o command "ChangesRequestedWorkOrderIntegrationCommand"
+    Quando a Workorder publica o evento "WorkOrderDiagnosedEvent"
+    Então a saga está no estado "AWAITING_BUDGET"
+    E a saga enviou o command "GenerateBudgetIntegrationCommand"
+
   Cenário: Falha ao gerar o link de pagamento pausa a saga, e o link gerado depois a retoma
     Dado que a saga da OS já chegou ao estado "AWAITING_PAYMENT_LINK"
     Quando o Finance publica o evento "PaymentLinkGenerationFailedEvent"
