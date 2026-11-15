@@ -1,0 +1,91 @@
+name: DESTROY - Terraform Saga MongoDB + Secrets (botão vermelho)
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: "Digite DESTRUIR para confirmar"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  # Compartilhado com o terraform.yml: nunca apply e destroy ao mesmo tempo.
+  group: terraform-saga-prod
+  cancel-in-progress: false
+
+env:
+  AWS_DEFAULT_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+  TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET || 'mecanicadm-v4-01' }}
+  TF_STATE_KEY: terraform/mecanicadm-saga/terraform.tfstate
+  TF_VAR_region: ${{ vars.AWS_REGION || 'us-east-1' }}
+  TF_VAR_atlas_org_id: ${{ vars.MONGODB_ATLAS_ORG_ID }}
+  TF_VAR_atlas_public_key: ${{ secrets.MONGODB_ATLAS_PUBLIC_KEY }}
+  TF_VAR_atlas_private_key: ${{ secrets.MONGODB_ATLAS_PRIVATE_KEY }}
+  TF_IN_AUTOMATION: "true"
+  TF_INPUT: "0"
+  ENVIRONMENT: prod
+  SERVICE_NAME: saga
+
+jobs:
+  destroy:
+    name: Terraform Destroy
+    runs-on: ubuntu-latest
+    environment: prod
+    timeout-minutes: 30
+
+    if: inputs.confirmation == 'DESTRUIR'
+
+    defaults:
+      run:
+        working-directory: devops/terraform
+
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v6
+
+      - name: Configura credenciais AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
+
+      - name: Setup do Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.15.4"
+
+      - name: Terraform Init
+        run: |
+          terraform init \
+            -input=false \
+            -backend-config="bucket=${TF_STATE_BUCKET}" \
+            -backend-config="region=${AWS_DEFAULT_REGION}" \
+            -backend-config="key=${TF_STATE_KEY}" \
+            -backend-config="use_lockfile=true"
+
+      # Apaga o cluster M0 do Atlas, o usuário, o IP access list, o projeto,
+      # os secrets do Secrets Manager e os parâmetros SSM deste state.
+      # O JWT compartilhado (/mecanicadm/prod/jwt_secret) NÃO é removido aqui:
+      # ele pertence ao state do mecanicadm-workorder-api-v4.
+      - name: Terraform Destroy
+        run: terraform destroy -auto-approve -input=false -no-color
+
+      - name: Verifica recursos restantes (informativo)
+        if: always()
+        run: |
+          echo "=== Parâmetros SSM restantes da saga ==="
+          aws ssm get-parameters-by-path \
+            --path "/mecanicadm/${ENVIRONMENT}/${SERVICE_NAME}" \
+            --recursive \
+            --query 'Parameters[].Name' \
+            --output table 2>/dev/null || true
+          echo "=== Secrets da saga no Secrets Manager ==="
+          aws secretsmanager list-secrets \
+            --filters Key=name,Values="mecanicadm/${ENVIRONMENT}/${SERVICE_NAME}" \
+            --query 'SecretList[].Name' \
+            --output table 2>/dev/null || true
+          echo ">>> Se aparecer algo acima, confira manualmente no console (Atlas e AWS)."
