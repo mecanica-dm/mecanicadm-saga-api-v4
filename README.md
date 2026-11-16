@@ -592,9 +592,116 @@ O restante do fluxo é coberto transição a transição (`SagaOrchestratorTest`
 
 ---
 
+## 🔄 Pipelines (GitHub Actions)
+
+O repositório tem quatro workflows em `.github/workflows/`. Os diagramas abaixo mostram cada um, e o primeiro mostra como eles se encadeiam.
+
+### Visão geral
+
+```mermaid
+flowchart LR
+    push_main(["push na main"])
+    push_tf(["push em devops/terraform"])
+
+    ci["CI/CD<br/>(ci-cd.yml)"]
+    tf["Terraform<br/>(terraform.yml)"]
+    deploy["Deploy Aplicação<br/>(app-deploy.yml)"]
+    destroy["DESTROY<br/>(destroy.yml)"]
+
+    push_main --> ci
+    push_tf --> tf
+    ci -->|"gh workflow run (image_tag)"| deploy
+    tf -->|"workflow_run (sucesso em push)"| deploy
+
+    deploy --> eks[("EKS, namespace mecanicadm")]
+    tf --> state[("Atlas + SSM + Secrets Manager")]
+    destroy -.->|"terraform destroy"| state
+```
+
+### CI/CD (`ci-cd.yml`)
+
+Build, testes, análise do Sonar e varredura de segurança. Só na `main` a imagem é publicada e o deploy é disparado.
+
+```mermaid
+flowchart LR
+    gatilho(["push, pull_request ou workflow_dispatch"]) --> build["build-and-test<br/>mvn clean verify + SonarCloud"]
+    build --> zap["security-scan<br/>OWASP ZAP contra a API no Docker Compose"]
+    zap --> cond{"push ou dispatch na main?"}
+    cond -->|"não (PR ou outra branch)"| fim(["fim"])
+    cond -->|"sim"| pub["publish-and-deploy (environment prod)<br/>build e push: prod-SHA e prod-latest"]
+    pub --> disp["gh workflow run app-deploy.yml<br/>image_tag=prod-SHA"]
+```
+
+### Terraform (`terraform.yml`)
+
+Cria o MongoDB Atlas, o usuário do banco, os secrets do Secrets Manager e os parâmetros SSM da saga. Em PR só valida, e o apply acontece na `main`.
+
+```mermaid
+flowchart LR
+    gatilho(["pull_request, push na main ou workflow_dispatch<br/>(devops/terraform/** ou o próprio workflow)"]) --> bucket["Garante o bucket S3 do state<br/>(versionamento e KMS)"]
+    bucket --> pre["Valida credenciais do Atlas<br/>e o JWT em SSM"]
+    pre --> init["terraform init<br/>(backend S3 com lockfile)"]
+    init --> fmt["terraform fmt -check"]
+    fmt --> val["terraform validate"]
+    val --> plan["terraform plan -out=tfplan-prod"]
+    plan --> cond{"push ou dispatch na main?"}
+    cond -->|"não (PR)"| fim(["fim"])
+    cond -->|"sim"| apply["terraform apply tfplan-prod"]
+    apply --> out["terraform output"]
+    out -.->|"workflow_run dispara"| dep(["app-deploy.yml"])
+```
+
+### Deploy da aplicação (`app-deploy.yml`)
+
+Aplica os manifests no EKS e materializa os Secrets a partir do SSM. Roda sozinho depois de um apply bem-sucedido do Terraform, ou quando o CI/CD publica uma nova imagem.
+
+```mermaid
+flowchart LR
+    gatilho(["push em devops/k8s ou messaging<br/>workflow_run do Terraform (push, sucesso)<br/>workflow_dispatch"]) --> kube["Atualiza o kubeconfig do EKS<br/>e garante o namespace mecanicadm"]
+    kube --> db["Cria mecanicadm-saga-db-secrets<br/>(MONGODB_URI do SSM)"]
+    db --> mq["Publica no SSM as credenciais do RabbitMQ<br/>(só se ausentes; GitHub Secrets CLOUDAMQP_*)"]
+    mq --> app["Cria mecanicadm-saga-secrets<br/>(JWT, RabbitMQ e New Relic)"]
+    app --> kong["Aguarda o rollout do Kong"]
+    kong --> man["kubectl apply: serviceaccount, configmap,<br/>service, deployment, hpa, ingress"]
+    man --> topo["Aplica a topologia do RabbitMQ<br/>(rabbitmq-apply-topology.sh)"]
+    topo --> img["kubectl set image<br/>mecanicadm-saga:TAG"]
+    img --> rst["rollout restart e rollout status<br/>(timeout de 5 min)"]
+```
+
+### Destruição da infraestrutura (`destroy.yml`)
+
+Remove a stack Terraform da saga. Só roda se a confirmação digitada for `DESTRUIR`. Apaga o cluster do Atlas e os dados, sem snapshot.
+
+```mermaid
+flowchart LR
+    gatilho(["workflow_dispatch<br/>(input confirmation)"]) --> cond{"confirmation == DESTRUIR?"}
+    cond -->|"não"| fim(["job pulado"])
+    cond -->|"sim"| init["Credenciais AWS, Terraform 1.15.4<br/>e terraform init (backend S3)"]
+    init --> destroy["terraform destroy -auto-approve"]
+    destroy --> check["Verifica SSM e Secrets restantes<br/>(informativo, sempre executa)"]
+```
+
+### Concorrência
+
+Os grupos de concorrência impedem que duas execuções conflitantes rodem ao mesmo tempo:
+
+| Workflow | Grupo | Cancela execução em andamento? |
+|---|---|---|
+| `ci-cd.yml` | `<nome do workflow>-<ref>` | Sim |
+| `terraform.yml` | `terraform-saga-prod` | Não |
+| `destroy.yml` | `terraform-saga-prod` | Não |
+| `app-deploy.yml` | `deploy-saga-prod` | Não |
+
 ## 📖 Documentação
 
 - [`docs/arquitetura-geral.md`](docs/arquitetura-geral.md): visão geral do sistema, com os diagramas.
 - [`docs/apoio/arquitetura-da-saga.md`](docs/apoio/arquitetura-da-saga.md): arquitetura formal (arc42) e registro de decisões.
 - [`docs/apoio/saga-fluxo.md`](docs/apoio/saga-fluxo.md): especificação do fluxo (estados, transições, compensação, dados).
 - [`docs/adr`](docs/adr), [`docs/rfc`](docs/rfc): decisões de arquitetura.
+
+## Repositórios relacionados
+
+- [mecanicadm-infra-v4](https://github.com/mecanica-dm/mecanicadm-infra-v4)
+- [mecanicadm-lambda-v4](https://github.com/mecanica-dm/mecanicadm-lambda-v4)
+- [mecanicadm-workorder-api-v4](https://github.com/mecanica-dm/mecanicadm-workorder-api-v4)
+- [mecanicadm-finance-api-v4](https://github.com/mecanica-dm/mecanicadm-finance-api-v4)
